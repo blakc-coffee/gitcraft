@@ -117,6 +117,17 @@ To bring your branch's committed changes into main, stay on main and run `git me
 
 ## Find help and recover from mistakes
 
+The explanation above the command prompt now uses the command result and the inspected Git state. For example, a commit with saved but unstaged edits explains that no commit was created and suggests reviewing `git diff` before choosing files to stage. A rejected push suggests receiving and inspecting history before combining work. Git's original output stays in the transcript, and hints never execute commands or resolve conflicts for you.
+
+<details>
+<summary>See an example of command feedback</summary>
+
+![Native Git output for an unstaged commit attempt, followed by a plain-language explanation and a suggested inspection step above the prompt.](docs/screenshots/command-feedback.png)
+
+</details>
+
+If a connection or server error leaves the outcome uncertain, GitCraft says the command may have run and asks you to inspect before retrying. It does not retry automatically.
+
 - **Not sure what happened?** Start with `git status`. Use `git diff` for unstaged changes and `git diff --staged` for staged changes. An empty diff does not necessarily mean all versions match.
 - **Staged the wrong file?** `git restore --staged index.html` removes it from staging while keeping its working-file edits.
 - **Want to discard unstaged edits?** `git restore index.html` replaces the working file with its staged version. Review the diff first: this discards those unstaged edits.
@@ -155,7 +166,7 @@ python -S -m unittest discover -s tests -v
 Run JavaScript checks with Node.js:
 
 ```sh
-node --test tests/test_lessons.mjs tests/test_playground.mjs
+node --test tests/test_lessons.mjs tests/test_playground.mjs tests/test_feedback.mjs
 ```
 
 These screenshots were captured from the running app in a separate disposable session. The first-commit and two-way collaboration examples were executed against native Git. Browser checks used isolated headless Chromium without accessing a personal browser profile.

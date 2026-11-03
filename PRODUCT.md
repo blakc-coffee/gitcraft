@@ -25,3 +25,5 @@ Current interaction revision: Git commands are the primary learning activity. A 
 
 ## Selected workspace revision
 The user chose the Split Workbench image: a narrow sidebar for Help, History, Files and Git tools; a file workspace on the left; a larger native-Git terminal on the right. Theme matches the selected charcoal/amber concept. App scrollbars are thin and square. Commands execute only after explicit submission. Native inspection now reuses unchanged repository views and reads staged/committed files in one batch, while observing native repository/worktree changes before reusing a view.
+
+Command feedback uses inspected before/after state and the native command result. It explains staging, commits, local versus shared changes and common recoverable errors in the existing terminal feedback area. Original output remains visible; hints do not execute or retry commands. Unrecognized errors fall back to inspection guidance, and transport/server failures explicitly retain uncertainty about whether an action ran. No hosted backend or AI service is required.

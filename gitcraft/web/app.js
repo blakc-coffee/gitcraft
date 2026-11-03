@@ -1,4 +1,4 @@
-import {fileState,counts,shortRef,graphLayout,explain,helpTopics,commandCatalog,compareWorkspaces} from '/playground.mjs';
+import {fileState,counts,shortRef,graphLayout,commandFeedback,helpTopics,commandCatalog,compareWorkspaces} from '/playground.mjs';
 
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -7,7 +7,7 @@ let token,state,actor='you',file='README.md',version='working',snapshot=null,bus
 let drafts={};
 const transcripts={you:'',sam:'',origin:''},commandHistory={you:[],sam:[],origin:[]};
 let historyCursor=0;
-let commandError='';
+let commandError=null;
 let compareBranch='main';
 function closeComparison(focus=false){
  $('compare-panel').hidden=true;$('compare-toggle').setAttribute('aria-expanded','false');
@@ -34,7 +34,7 @@ function openComparison(){
  for(const element of document.querySelectorAll('.editor-panel,.console-panel,.files-panel'))element.inert=true;
  renderComparison();$('compare-heading').focus({preventScroll:true});
 }
-function suggestCommand(command){$('command').value=command;$('command').focus();$('command-effect').textContent='Suggested command only. Read it, edit it if needed, then press Enter to execute.';}
+function suggestCommand(command){$('command').value=command;$('command').focus();showCommandFeedback({summary:'Command placed in the prompt.',hint:'Read it, edit it if needed, then press Enter to execute.'});}
 try{drafts=JSON.parse(localStorage.getItem('gitcraft-playground-drafts')||'{}');if(!drafts||typeof drafts!=='object'||Array.isArray(drafts))drafts={};}catch{drafts={};}
 for(const [key,value] of Object.entries(drafts))if(typeof value!=='string'||value.length>8192)delete drafts[key];
 const view=()=>state.views[actor];
@@ -43,6 +43,12 @@ const draftKey=()=>[state.lessonId,actor,view().branch,file].join(':');
 function rememberDrafts(){try{localStorage.setItem('gitcraft-playground-drafts',JSON.stringify(drafts));}catch{/* Editing still works without browser storage. */}}
 function hasDraft(){return !view().bare&&Object.hasOwn(drafts,draftKey())&&drafts[draftKey()]!==view().files[file].working;}
 function feedback(text){$('feedback').textContent=text;}
+function showCommandFeedback({summary,hint='',tone='info'}){
+ const area=$('command-effect'),title=document.createElement('strong');title.textContent=summary;
+ area.dataset.tone=tone;area.setAttribute('aria-atomic','true');area.replaceChildren(title);
+ if(hint){const detail=document.createElement('span');detail.className='command-hint';detail.textContent=hint;area.append(detail);}
+ area.scrollTop=0;feedback('');
+}
 function restoreControls(){
  document.querySelectorAll('#workspace button,#workspace input,#workspace select,#workspace textarea,#actors button,#project,.project-actions select,#action-panel button,#action-panel input,#action-panel select').forEach(el=>{el.disabled=busy;});
  if(!state)return;
@@ -66,7 +72,7 @@ async function api(path,body){
   if(result.state){state=result.state;if(!state.views[actor])actor='you';}
   if(!response.ok){
    const error=(result.error||'The operation could not be confirmed.').replace('Open Command reference for supported forms.','Open Commands in the top navigation for supported forms.');
-   if(path==='/api/command')commandError=error;
+   if(path==='/api/command')commandError={output:error,requestStatus:response.status};
    // An operation may have partially run. Inspect; never automatically retry it.
    if(response.status!==403){const sync=await fetch('/api/state');if(sync.ok){const actual=await sync.json();state=actual.state;token=actual.token;if(!state.views[actor])actor='you';}}
    render();
@@ -75,34 +81,30 @@ async function api(path,body){
   }
   return result;
  }catch{
+  if(path==='/api/command')commandError={output:'The connection was interrupted. The command may have run; reconnect and inspect before retrying.',requestStatus:0};
   feedback('The connection was interrupted. Refresh to inspect the actual project before retrying. Your browser editor drafts are kept.');
   return null;
  }finally{setBusy(false);if(focusId&&document.activeElement===document.body)$(focusId)?.focus();}
 }
-function appendOutput(command,result){let entry=`${actor}@${view().branch||'shared'} $ ${command}\n${result.output||'(No output)'}`;if(result.code)entry+=`\nExit code: ${result.code}`;transcripts[actor]=(transcripts[actor]+'\n\n'+entry).trim().slice(-40000);$('output').textContent=transcripts[actor];$('output').scrollTop=$('output').scrollHeight;}
-function requireSavedDraft(){if(hasDraft()){feedback('Save your editor draft first, so Git uses the file version you can see.');$('save-file').focus();return false;}return true;}
-async function runGit(command,kind='command'){
- commandError='';
+function appendOutput(command,result){let entry=`${actor}@${view().branch||'shared'} $ ${command}\n${result.output||'(No output)'}`;if(result.requestStatus!==undefined)entry+=result.requestStatus?`\nRequest returned HTTP ${result.requestStatus}.`:'\nConnection interrupted; command outcome unknown.';else if(result.code)entry+=`\nExit code: ${result.code}`;transcripts[actor]=(transcripts[actor]+'\n\n'+entry).trim().slice(-40000);$('output').textContent=transcripts[actor];$('output').scrollTop=$('output').scrollHeight;}
+function requireSavedDraft(){if(hasDraft()){showCommandFeedback({summary:'Git has not seen your browser draft yet.',hint:'Save file before this command. Nothing has run.'});$('save-file').focus();return false;}return true;}
+async function runGit(command){
+ commandError=null;
  const inspection=/^git\s+(status|diff|log|show|remote)(\s|$)/.test(command)||/^git branch(?: -vv)?$/.test(command);
  if(!inspection&&!requireSavedDraft())return;
  const started=performance.now();
  const before=state,active=actor,result=await api('/api/command',{actor,command});
  $('command-timing').textContent=Math.round(performance.now()-started)+' ms';
- if(!result){if(commandError){appendOutput(command,{output:commandError,code:1});$('command-effect').textContent=commandError;}return;}
+ if(!result){if(commandError){const failure={...commandError,code:1};appendOutput(command,failure);showCommandFeedback(commandFeedback(before,state,active,command,failure));}return;}
  appendOutput(command,result);render();
- const intent={add:'stage',restore:'unstage',switch:/ -c /.test(command)?'branch':'switch'}[kind]||kind;
- let explanation=explain(before,state,active,intent,result.code);
- if(result.code===0&&kind==='status'){const total=counts(view());explanation=`${total.working} file(s) have unstaged edits; ${total.prepared} have staged changes. Status only inspected this workspace. Use git diff to review edits.`;}
- if(result.code===0&&kind==='diff')explanation=`This compares ${/--staged|--cached/.test(command)?'the staging area with the last commit':'saved working files with the staging area'}. + marks added lines; - marks removed lines. No files changed.`;
- if(result.code===0&&kind==='log')explanation='These are commits known in this workspace. Each has an identifier and message. Reading history did not change files or fetch shared work.';
- feedback(explanation);$('command-effect').textContent=explanation;
+ showCommandFeedback(commandFeedback(before,state,active,command,{...result,hasDraft:hasDraft()}));
  return result;
 }
 async function saveContent(content,name=file){
  const before=state,active=actor,result=await api('/api/edit',{actor,file:name,content});
  if(!result)return false;
  if(name===file){delete drafts[draftKey()];rememberDrafts();}
- render();feedback(explain(before,state,active,'edit'));
+ render();showCommandFeedback({summary:before.views[active].files[name].working!==state.views[active].files[name].working?`Saved ${name} to working files.`:'The saved file content was already the same.',hint:'Staging and commits did not change. Use git diff to review your edit.'});
  return true;
 }
 function renderFiles(){
@@ -227,7 +229,7 @@ function exchange(){
  panel(`<h2>Exchange and combine work</h2><p>Fetch receives shared commits. Merge combines a line into your current branch. Push shares saved commits. Choose what you want to try.</p><div class="exchange-buttons">${hasRemote?'<button data-exchange="fetch">Fetch from Shared</button><button data-exchange="push">Push this branch</button>':''}<button data-close-panel>Close</button></div>${targets.length?`<form id="merge-form"><label for="merge-target">Bring work into ${esc(current.branch)}<select id="merge-target">${targets.map(name=>`<option>${esc(name)}</option>`).join('')}</select></label><button type="submit">Merge selected branch</button></form>`:'<p>Create another branch to explore merging.</p>'}`);
  const merge=$('merge-form');if(merge)merge.addEventListener('submit',async event=>{event.preventDefault();suggestCommand('git merge '+$('merge-target').value);closeActionPanel();});
 }
-function setActor(next){actor=next;historyCursor=commandHistory[actor].length;$('command').value='';$('command-effect').textContent='Terminal connected to '+names[actor]+'. Nothing ran when you switched.';snapshot=null;version='working';closeInspector();closeActionPanel();render();feedback(view().bare?'You are observing the actual shared repository. This does not refresh either person’s local copy.':`You are now in ${names[actor].toLowerCase()}. The other workspace was kept as it was.`);}
+function setActor(next){actor=next;historyCursor=commandHistory[actor].length;$('command').value='';snapshot=null;version='working';closeInspector();closeActionPanel();render();showCommandFeedback({summary:'Viewing '+names[actor]+'.',hint:view().bare?'Shared holds published commits and has no working files. Neither local copy was refreshed.':'Switching views did not fetch, merge or run a command. The other workspace stayed separate.'});}
 
 $('files').addEventListener('click',event=>{const open=event.target.closest('[data-file]'),stage=event.target.closest('[data-stage]');if(open)openFile(open.dataset.file);if(stage)suggestCommand('git add '+stage.dataset.stage);});
 $('compare-toggle').addEventListener('click',()=>{$('compare-panel').hidden?openComparison():closeComparison(true);});
@@ -242,7 +244,7 @@ $('new-branch').addEventListener('click',newBranch);$('quick-edit').addEventList
 $('commit-form').addEventListener('submit',async event=>{event.preventDefault();const message=$('message').value.trim();if(!message){feedback('Give this snapshot a short name, so you can recognise it later.');$('message').focus();return;}if(/[\x00-\x1f]/.test(message)){feedback('Use a single line for the snapshot name.');return;}suggestCommand('git commit -m '+JSON.stringify(message));});
 $('share-toggle').addEventListener('click',()=>{$('action-panel').hidden?exchange():closeActionPanel();});
 $('action-panel').addEventListener('click',event=>{if(event.target.closest('[data-close-panel]'))closeActionPanel();const kind=event.target.closest('[data-exchange]')?.dataset.exchange;if(kind==='fetch')suggestCommand('git fetch origin');if(kind==='push')suggestCommand('git push -u origin '+view().branch);});
-$('undo').addEventListener('click',async()=>{const result=await api('/api/undo',{});if(result){snapshot=null;appendOutput('Undo playground action',result);render();feedback(result.output+(hasDraft()?' Your unsaved editor draft is kept.':''));}});
+$('undo').addEventListener('click',async()=>{const result=await api('/api/undo',{});if(result){snapshot=null;appendOutput('Undo playground action',result);render();showCommandFeedback({summary:'Restored the whole playground to before its last action.',hint:hasDraft()?'Your unsaved browser draft was kept.':'Files, staging, branch positions and Shared were restored.'});}});
 function markDraft(content){drafts[draftKey()]=content;rememberDrafts();$('draft-note').textContent=hasDraft()?'Unsaved browser draft':'Saved file';applyEditorControls();}
 $('source').addEventListener('input',()=>{markDraft($('source').value);updateLineNumbers();});
 $('source').addEventListener('scroll',()=>{$('line-numbers').scrollTop=$('source').scrollTop;});
@@ -260,10 +262,10 @@ $('close-help').addEventListener('click',()=>{$('help-panel').hidden=true;$('hel
 $('files-help').addEventListener('click',()=>showHelp('files'));$('stage-help').addEventListener('click',()=>showHelp('stage'));
 $('help-topics').innerHTML=Object.entries(helpTopics).map(([id,topic])=>`<details data-topic="${id}"><summary>${esc(topic.title)}</summary><p>${esc(topic.text)}</p>${topic.command?`<code>${esc(topic.command)}</code>`:''}</details>`).join('');
 document.querySelectorAll('[data-experiment]').forEach(button=>button.addEventListener('click',()=>{$('help-panel').hidden=true;$('help-toggle').setAttribute('aria-expanded','false');const kind=button.dataset.experiment;if(kind==='edit')openFile('index.html');if(kind==='branch')newBranch();if(kind==='sam'&&state.views.sam){setActor('sam');openFile('index.html');}}));
-$('reset').addEventListener('click',()=>{panel('<h2>Reset this playground?</h2><p>This returns all its workspaces and Shared to the starting point. You can Undo the reset.</p><button id="confirm-reset">Reset playground</button> <button data-close-panel>Keep exploring</button>');$('help-panel').hidden=true;$('help-toggle').setAttribute('aria-expanded','false');$('confirm-reset').addEventListener('click',async()=>{const result=await api('/api/restore',{});if(result){snapshot=null;closeActionPanel();render();feedback('The playground is back at its starting point. Undo can restore the state before the reset. Browser drafts are kept.');}});});
+$('reset').addEventListener('click',()=>{panel('<h2>Reset this playground?</h2><p>This returns all its workspaces and Shared to the starting point. You can Undo the reset.</p><button id="confirm-reset">Reset playground</button> <button data-close-panel>Keep exploring</button>');$('help-panel').hidden=true;$('help-toggle').setAttribute('aria-expanded','false');$('confirm-reset').addEventListener('click',async()=>{const result=await api('/api/restore',{});if(result){snapshot=null;closeActionPanel();render();showCommandFeedback({summary:'The playground is back at its starting point.',hint:'Undo can restore the state before this reset. Browser drafts were kept.'});}});});
 $('console-toggle').addEventListener('click',()=>{$('command').focus();});
 $('close-console').addEventListener('click',()=>{$('workspace').classList.toggle('terminal-focus');$('close-console').textContent=$('workspace').classList.contains('terminal-focus')?'Show editor':'Focus terminal';$('command').focus();});
-$('console-form').addEventListener('submit',async event=>{event.preventDefault();const command=$('command').value.trim();if(command&&!busy){commandHistory[actor].push(command);historyCursor=commandHistory[actor].length;const result=await runGit(command,command.split(/\s+/)[1]);if(result?.code===0)$('command').value='';$('command').focus();}});
+$('console-form').addEventListener('submit',async event=>{event.preventDefault();const command=$('command').value.trim();if(command&&!busy){commandHistory[actor].push(command);historyCursor=commandHistory[actor].length;const result=await runGit(command);if(result?.code===0)$('command').value='';$('command').focus();}});
 $('command').addEventListener('keydown',event=>{if(event.key==='ArrowUp'||event.key==='ArrowDown'){event.preventDefault();const history=commandHistory[actor];historyCursor=Math.max(0,Math.min(history.length,historyCursor+(event.key==='ArrowUp'?-1:1)));$('command').value=history[historyCursor]||'';}});
 $('graph-text-toggle').addEventListener('click',()=>{const open=$('graph-text').hidden;$('graph-text').hidden=!open;$('graph-text-toggle').setAttribute('aria-expanded',String(open));});
 $('files-toggle').addEventListener('click',()=>{closeComparison();const open=$('workspace').classList.toggle('files-open');$('files-toggle').setAttribute('aria-expanded',String(open));});

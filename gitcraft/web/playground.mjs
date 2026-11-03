@@ -67,6 +67,64 @@ export function explain(before,after,actor,kind,code=0) {
   if(kind==='teammate')return 'Sam shared an entrance update. Your own files and remembered shared history have not refreshed automatically.';
   return 'Git completed the action. Select a snapshot or inspect the files to explore the result.';
 }
+export function commandFeedback(before,after,actor,command,result) {
+ const current=after.views[actor],previous=before.views[actor],total=counts(current);
+ const words=command.trim().split(/\s+/),verb=words[1],output=String(result.output||'');
+ const message=(summary,hint='',tone='info')=>({summary,hint,tone});
+ const changed=version=>Object.keys(current.files||{}).filter(name=>previous.files[name]?.[version]!==current.files[name][version]);
+ const names=files=>files.join(', ');
+ const conflicts=Object.keys(current.files||{}).filter(name=>current.files[name].staged===null);
+ if(result.requestStatus!==undefined){
+  if(result.requestStatus===0||result.requestStatus>=500)return message('The command’s outcome could not be confirmed.','It may have run. Reconnect and inspect with git status before retrying.','error');
+  if(result.requestStatus===403)return message('This local session needs to reconnect.','Refresh the page before sending another command.','error');
+  const rejectedBeforeGit=/No command ran|Enter a Git command under|Use a single-line|Close the quoted command|This is a Git console|supports up to 12 branches|Choose an editable collaborator|Expected a small JSON request/i.test(output);
+  return message(result.requestStatus===400&&rejectedBeforeGit?'GitCraft did not run this command.':'The request could not be completed.',rejectedBeforeGit?output:output+' Inspect with git status before retrying.',rejectedBeforeGit?'info':'error');
+ }
+ if(result.code!==0){
+  if(conflicts.length)return message(`Resolve the merge in ${names(conflicts)} before continuing.`,`Edit the file, stage the resolved content, then inspect with git status. Nothing was resolved for you.`);
+  if(verb==='commit'&&!total.prepared&&previous.head===current.head&&/nothing to commit|no changes added to commit|nothing added to commit/i.test(output)){
+   return total.working?message('No commit was created. Your saved edits are not staged.','Review them with git diff, then use git add on the files you want to commit.'):message('No commit was created because there is no staged change.','Use git status to inspect this workspace. You can edit a file when you have a change to make.');
+  }
+  if(verb==='push'&&/non-fast-forward|fetch first/i.test(output))return message('Shared rejected this push because the histories need to be reconciled.','Run git fetch origin, then inspect git log --oneline --graph --all before choosing how to combine the work.');
+  if(verb==='push'&&/no upstream branch/i.test(output))return message('This branch has no default destination for git push.',`To publish this branch to Shared, use git push -u origin ${current.branch}.`);
+  if((verb==='switch'||verb==='branch')&&/already exists/i.test(output))return message('That branch name already exists in this workspace.','Use git branch to inspect the names before choosing one.');
+  if(verb==='switch'&&/would be overwritten/i.test(output))return message('Git blocked the switch to protect local edits.','Review git diff and git diff --staged before deciding what to keep.');
+  if(verb==='switch'&&/invalid reference|not a valid reference/i.test(output))return message('Git could not find that branch in this workspace.','Use git branch to see the local branch names.');
+  if(verb==='merge'&&words[2]==='--abort'&&/no merge to abort|MERGE_HEAD missing/i.test(output))return message('There is no in-progress merge to abort.','Use git status to inspect the current state.');
+  return message('Git reported an error. Read its response above before choosing the next step.','Use git status to inspect the actual workspace. No retry runs automatically.','error');
+ }
+ if(verb==='status'){
+  const summary=`${total.working} file(s) with unstaged edits; ${total.prepared} with staged changes.`;
+  return message(summary,conflicts.length?`${names(conflicts)} needs a merge resolution.`:result.hasDraft?'Your browser draft is not saved yet. Git can only inspect saved files.':total.working?'Use git diff to review the unstaged lines.':total.prepared?'Use git diff --staged to review what a commit would contain.':'Working files and staging match the current commit. This does not check Shared for new work.');
+ }
+ if(verb==='diff'){
+  const staged=words.includes('--staged')||words.includes('--cached');
+  if(result.hasDraft)return message('Git compared saved file content. Your unsaved browser draft is excluded.','Save file when you want Git to inspect that draft.');
+  if(!output.trim())return message(staged?'Staging matches the current commit.':'Saved working files match staging.',!staged&&total.prepared?'There are still staged changes. Inspect them with git diff --staged.':'No differences were reported for this comparison.');
+  return message(staged?'Compared staging with the current commit.':'Compared saved working files with staging.','+ marks added lines; - marks removed lines. This command did not edit files.');
+ }
+ if(verb==='add'){
+  const files=changed('staged');
+  return message(files.length?`Staged ${names(files)}.`:'The staging content was already the same.','No commit was created. Use git diff --staged to review what is prepared.');
+ }
+ if(verb==='restore'){
+  const staged=words[2]==='--staged',files=changed(staged?'staged':'working');
+  if(staged)return message(files.length?`Unstaged ${names(files)}.`:'The selected staging content already matched the commit.',changed('working').length?'Inspect the working files with git diff.':'Working-file edits were kept. Use git diff to review them.');
+  return message(files.length?`Replaced the saved working content of ${names(files)} with its staged version.`:'The selected working content already matched staging.',total.prepared?'Staged changes still remain. Inspect git diff --staged.':'No commit was created or published.');
+ }
+ if(verb==='commit')return message(previous.head!==current.head?`Created local commit ${current.head.slice(0,7)} on ${current.branch||'detached HEAD'}.`:'HEAD did not move. Inspect git log --oneline.',`${total.working?`${total.working} file(s) still have unstaged edits outside this commit. `:''}Committing does not publish to Shared or update the other workspace.`);
+ if(verb==='fetch'){
+  const refs=view=>JSON.stringify(view.graph.refs.filter(ref=>ref.name.startsWith('refs/remotes/')).map(ref=>[ref.name,ref.target]).sort());
+  return message(refs(previous)!==refs(current)?'Updated this workspace’s remembered Shared refs.':'No remembered Shared ref moved.',previous.head===current.head&&!changed('working').length?'Your current branch and working files were not merged. Open Compare or History to inspect the received work.':'Inspect the branch and files before continuing.');
+ }
+ if(verb==='push')return message(effects(before,after,actor).shared?'Published committed work to Shared.':'Shared’s observed branch positions did not change.','The other workspace’s files do not update automatically. Open Compare to see the separate copies.');
+ if(verb==='switch')return message(previous.branch!==current.branch?`Now working on ${current.branch||'detached HEAD'}.`:`Already on ${current.branch}.`,words[2]==='-c'?'Created a local branch. Nothing was published to Shared.':'Use git status to inspect the branch and files before editing.');
+ if(verb==='branch')return message(effects(before,after,actor).history?`Created a local branch; stayed on ${current.branch}.`:`Listed local branches. You are on ${current.branch}.`,'A branch name is local until you publish it.');
+ if(verb==='merge'&&words[2]==='--abort')return message('Stopped the in-progress merge.','Inspect git status before continuing. Nothing was published to Shared.');
+ if(verb==='merge')return message(previous.head!==current.head?'Your branch now includes the selected line of work.':'No merge was needed; your branch already contains that work.','Nothing was pushed. Inspect git log --oneline --graph --all to check the result.');
+ if(verb==='log'||verb==='show'||verb==='remote')return message(verb==='log'?'Displayed commits known in this workspace.':verb==='show'?'Displayed the requested saved content.':'Displayed configured remote locations.','This only inspected the repository. No files changed or remote work was fetched.');
+ return message('Git completed the command.','Read its response above and inspect the result before continuing.');
+}
 export const helpTopics={
   files:{title:'Working files',text:'These are the files in this person’s own copy of the project. Edit them freely. Saving a file does not create a Git snapshot.',command:'git diff'},
   stage:{title:'Prepare a change',text:'Preparing, or staging, chooses the current contents for the next snapshot. Later edits stay separate until you prepare again.',command:'git add index.html'},
