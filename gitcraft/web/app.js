@@ -3,7 +3,7 @@ import {fileState,counts,shortRef,graphLayout,explain,helpTopics,commandCatalog,
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const names={you:'Your workspace',sam:'Sam’s workspace',origin:'Shared'};
-let token,state,actor='you',file='README.md',version='working',snapshot=null,busy=false,output='',previewOpen=false;
+let token,state,actor='you',file='README.md',version='working',snapshot=null,busy=false,previewOpen=false;
 let drafts={};
 const transcripts={you:'',sam:'',origin:''},commandHistory={you:[],sam:[],origin:[]};
 let historyCursor=0;
@@ -79,7 +79,7 @@ async function api(path,body){
   return null;
  }finally{setBusy(false);if(focusId&&document.activeElement===document.body)$(focusId)?.focus();}
 }
-function appendOutput(command,result){let entry=`${actor}@${view().branch||'shared'} $ ${command}\n${result.output||'(No output)'}`;if(result.code)entry+=`\nExit code: ${result.code}`;transcripts[actor]=(transcripts[actor]+'\n\n'+entry).trim().slice(-40000);output=transcripts[actor];$('output').textContent=output;$('output').scrollTop=$('output').scrollHeight;}
+function appendOutput(command,result){let entry=`${actor}@${view().branch||'shared'} $ ${command}\n${result.output||'(No output)'}`;if(result.code)entry+=`\nExit code: ${result.code}`;transcripts[actor]=(transcripts[actor]+'\n\n'+entry).trim().slice(-40000);$('output').textContent=transcripts[actor];$('output').scrollTop=$('output').scrollHeight;}
 function requireSavedDraft(){if(hasDraft()){feedback('Save your editor draft first, so Git uses the file version you can see.');$('save-file').focus();return false;}return true;}
 async function runGit(command,kind='command'){
  commandError='';
@@ -89,7 +89,7 @@ async function runGit(command,kind='command'){
  const before=state,active=actor,result=await api('/api/command',{actor,command});
  $('command-timing').textContent=Math.round(performance.now()-started)+' ms';
  if(!result){if(commandError){appendOutput(command,{output:commandError,code:1});$('command-effect').textContent=commandError;}return;}
- appendOutput(command,result);render(before);
+ appendOutput(command,result);render();
  const intent={add:'stage',restore:'unstage',switch:/ -c /.test(command)?'branch':'switch'}[kind]||kind;
  let explanation=explain(before,state,active,intent,result.code);
  if(result.code===0&&kind==='status'){const total=counts(view());explanation=`${total.working} file(s) have unstaged edits; ${total.prepared} have staged changes. Status only inspected this workspace. Use git diff to review edits.`;}
@@ -102,7 +102,7 @@ async function saveContent(content,name=file){
  const before=state,active=actor,result=await api('/api/edit',{actor,file:name,content});
  if(!result)return false;
  if(name===file){delete drafts[draftKey()];rememberDrafts();}
- render(before);feedback(explain(before,state,active,'edit'));
+ render();feedback(explain(before,state,active,'edit'));
  return true;
 }
 function renderFiles(){
@@ -117,9 +117,8 @@ function renderFiles(){
  $('commit-note').textContent=total.conflicts?'Resolve the highlighted file before saving the combined snapshot.':total.prepared?'A snapshot saves prepared content, not every edit.':'Prepare a changed file to save a snapshot.';
  $('flow').innerHTML=current.bare?'<span>Shared repository</span><strong>Snapshots and branch names, without a working folder.</strong>':`<button class="text-button ${total.working?'active':''}" data-flow="files"><strong>Your files</strong><span>${total.working} unprepared change${total.working===1?'':'s'}</span></button><span class="flow-arrow" aria-hidden="true">→</span><button class="text-button ${total.prepared?'active':''}" data-flow="prepared"><strong>Prepared</strong><span>${total.prepared} file${total.prepared===1?'':'s'}</span></button><span class="flow-arrow" aria-hidden="true">→</span><span><strong>Known snapshots</strong>${current.graph.commits.length}${current.graph.truncated?'+':''} saved version${current.graph.commits.length===1?'':'s'}</span>`;
 }
-function renderGraph(before){
+function renderGraph(){
  const current=view(),commits=current.graph.commits,layout=graphLayout(commits);
- const oldIds=new Set(before?.views[actor]?.graph.commits.map(commit=>commit.id)||commits.map(commit=>commit.id));
  const graph=$('graph'),width=Math.max(layout.width,$('canvas').clientWidth-24),offset=(width-layout.width)/2;
  graph.style.width=width+'px';graph.style.height=layout.height+'px';graph.replaceChildren();
  const paths=layout.edges.map(edge=>{const a={x:edge.start.x+offset,y:edge.start.y},b={x:edge.end.x+offset,y:edge.end.y};return `<path class="graph-edge" d="M${a.x},${a.y+14} C${a.x},${a.y+60} ${b.x},${b.y-60} ${b.x},${b.y-15}"/>`;}).join('');
@@ -127,7 +126,7 @@ function renderGraph(before){
  for(const commit of commits){
   const node=document.createElement('button'),point=layout.positions.get(commit.id),refs=current.graph.refs.filter(ref=>ref.target===commit.id);
   const isHead=commit.id===current.head;
-  node.className='commit-node'+(isHead?' current':'')+(snapshot?.commit===commit.id?' selected':'')+(!oldIds.has(commit.id)?' new':'');
+  node.className='commit-node'+(isHead?' current':'')+(snapshot?.commit===commit.id?' selected':'');
   node.style.left=(point.x+offset-17)+'px';node.style.top=(point.y-17)+'px';node.dataset.commit=commit.id;
   node.setAttribute('aria-label',`Inspect snapshot ${commit.id.slice(0,7)}: ${commit.message}, by ${commit.author}${isHead?', current HEAD':''}${refs.length?', branches '+refs.map(ref=>shortRef(ref.name)).join(', '):''}`);
   node.setAttribute('aria-pressed',String(snapshot?.commit===commit.id));
@@ -136,7 +135,7 @@ function renderGraph(before){
  }
  $('graph-text').innerHTML='<ol>'+commits.map(commit=>`<li><strong>${esc(commit.message)}</strong> (${commit.id.slice(0,7)}), by ${esc(commit.author)}. ${commit.parents.length?'Parents: '+commit.parents.map(id=>id.slice(0,7)).join(', '):'Starting snapshot.'} ${current.graph.refs.filter(ref=>ref.target===commit.id).map(ref=>esc(shortRef(ref.name))).join(', ')}</li>`).join('')+'</ol>'+(current.graph.truncated?'<p>Showing the 60 most recent known snapshots.</p>':'');
 }
-function render(before=null){
+function render(){
  if(!state.views[actor])actor='you';
  if(!projectFiles().includes(file))file=projectFiles()[0];
  const current=view();$('project').value=state.mission;
@@ -148,10 +147,10 @@ function render(before=null){
  $('branch-description').textContent=current.bare?'Shared is a bare repository, with no working folder.':`Viewing ${names[actor].toLowerCase()} on ${current.branch||'detached HEAD'}.`;
  $('prompt').textContent=actor+':'+(current.branch||'shared')+' $';$('loading').hidden=true;
  if(snapshot&&!current.graph.commits.some(commit=>commit.id===snapshot.commit)){snapshot=null;version='working';}
- renderFiles();if(!$('history-panel').hidden)renderGraph(before);
+ renderFiles();if(!$('history-panel').hidden)renderGraph();
  if(!$('inspector').hidden)renderInspector();
  renderComparison();
- output=transcripts[actor];$('output').textContent=output||'Your terminal is ready. Type git status and press Enter.\nThis runs native Git in the selected practice repository.';
+ const output=transcripts[actor];$('output').textContent=output||'Your terminal is ready. Type git status and press Enter.\nThis runs native Git in the selected practice repository.';
  restoreControls();
 }
 function applyEditorControls(){
@@ -159,14 +158,10 @@ function applyEditorControls(){
  const editing=!snapshot&&version==='working'&&!view().bare;
  $('source').readOnly=!editing;$('save-file').hidden=!editing;
  $('source').disabled=busy;$('save-file').disabled=busy||!hasDraft();
- $('prepare-file').disabled=busy||view().bare||!!snapshot||!fileState(view().files[file]).working;
- $('unprepare-file').disabled=busy||view().bare||!!snapshot||!fileState(view().files[file]).prepared;
- $('preview-toggle').disabled=busy||view().bare||!!snapshot||version!=='working';
 }
 function renderInspector(){
  const current=view();
- $('file-select').innerHTML=projectFiles().map(name=>`<option>${esc(name)}</option>`).join('');
- $('file-select').value=file;$('inspector-title').textContent=snapshot?'Snapshot '+snapshot.commit.slice(0,7):current.bare?'Shared repository':file;
+ $('inspector-title').textContent=snapshot?'Snapshot '+snapshot.commit.slice(0,7):current.bare?'Shared repository':file;
  $('close-inspector').hidden=!snapshot&&version==='working';
  $('snapshot-info').hidden=!snapshot;$('compare-versions').hidden=!!snapshot||current.bare;
  if(snapshot){const node=current.graph.commits.find(commit=>commit.id===snapshot.commit);$('snapshot-info').textContent=(node?.message||'Saved snapshot')+' · '+(node?.author||'');}
@@ -176,7 +171,7 @@ function renderInspector(){
  $('source').value=text??'No single prepared version. Resolve the merge in the working file.';
  $('version-note').textContent=snapshot?'Read-only snapshot. Choose Working files to return to your own edits.':current.bare?'Shared has no working folder. Open History and select a snapshot to read its files.':version==='working'?'Edit the file yourself. Save it, then prepare the changes you want to keep.':version==='staged'?'The prepared copy Git would save next. Later working edits do not change it.':'The version already saved in the current commit.';
  $('draft-note').textContent=hasDraft()&&!snapshot&&version==='working'?'Unsaved browser draft':'Saved file';
- $('file-actions').hidden=!!snapshot||current.bare;updateLineNumbers();applyEditorControls();renderPreview();
+ updateLineNumbers();applyEditorControls();renderPreview();
 }
 function updateLineNumbers(){
  $('line-numbers').textContent=Array.from({length:$('source').value.split('\n').length},(_,i)=>i+1).join('\n');
@@ -186,8 +181,6 @@ let previewKey='';
 function renderPreview(force=false){
  const allowed=previewOpen&&!view().bare&&!snapshot&&version==='working';
  $('preview-pane').hidden=!allowed;
- $('preview-toggle').setAttribute('aria-expanded',String(allowed));
- $('preview-toggle').textContent=allowed?'Hide preview':'Preview site';
  $('editor-workarea').classList.toggle('with-preview',allowed);
  if(!allowed)return;
  const key=JSON.stringify([state.lessonId,actor,view().files['index.html'].working,view().files['styles.css'].working]);
@@ -197,7 +190,7 @@ function toggleHistory(open){
  if(open)closeComparison();
  if(open){$('help-panel').hidden=true;$('help-toggle').setAttribute('aria-expanded','false');}
  $('history-panel').hidden=!open;$('history-toggle').setAttribute('aria-expanded',String(open));
- $('workspace').classList.toggle('with-history',open);if(open)renderGraph();
+ if(open)renderGraph();
 }
 function openFile(name){
  if(view().bare)return;
@@ -254,17 +247,13 @@ function markDraft(content){drafts[draftKey()]=content;rememberDrafts();$('draft
 $('source').addEventListener('input',()=>{markDraft($('source').value);updateLineNumbers();});
 $('source').addEventListener('scroll',()=>{$('line-numbers').scrollTop=$('source').scrollTop;});
 $('file-tabs').addEventListener('click',event=>{const tab=event.target.closest('[data-tab-file]');if(tab&&!busy){file=tab.dataset.tabFile;snapshot=null;version='working';renderFiles();renderInspector();}});
-$('preview-toggle').addEventListener('click',()=>{previewOpen=!previewOpen;renderPreview();});
 $('refresh-preview').addEventListener('click',()=>renderPreview(true));
 $('drawer-preview').addEventListener('click',()=>{previewOpen=true;renderPreview();$('workspace').classList.remove('files-open');$('files-toggle').setAttribute('aria-expanded','false');});
 $('close-preview').addEventListener('click',()=>{previewOpen=false;renderPreview();$('source').focus();});
 $('history-toggle').addEventListener('click',()=>toggleHistory($('history-panel').hidden));
 $('close-history').addEventListener('click',()=>{toggleHistory(false);$('history-toggle').focus();});
 $('save-file').addEventListener('click',()=>saveContent($('source').value));
-$('file-select').addEventListener('change',()=>{file=$('file-select').value;renderInspector();});
 document.querySelectorAll('[data-version]').forEach(button=>button.addEventListener('click',()=>{version=button.dataset.version;renderInspector();}));
-$('prepare-file').addEventListener('click',()=>suggestCommand('git add '+file));
-$('unprepare-file').addEventListener('click',()=>suggestCommand('git restore --staged '+file));
 $('close-inspector').addEventListener('click',()=>{closeInspector();$('source').focus();});
 $('help-toggle').addEventListener('click',()=>{if($('help-panel').hidden)showHelp();else{$('help-panel').hidden=true;$('help-toggle').setAttribute('aria-expanded','false');}});
 $('close-help').addEventListener('click',()=>{$('help-panel').hidden=true;$('help-toggle').setAttribute('aria-expanded','false');$('help-toggle').focus();});

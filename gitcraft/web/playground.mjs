@@ -1,4 +1,3 @@
-export const fileNames = ['schedule.md','accessibility.md'];
 // Compare observed native refs; different commit IDs never imply ancestry.
 export function compareWorkspaces(views, branch='main') {
  const branches=[...new Set(Object.values(views).flatMap(view=>view.graph.refs.filter(ref=>ref.name.startsWith('refs/heads/')).map(ref=>ref.name.slice(11))))].sort((a,b)=>a==='main'?-1:b==='main'?1:a.localeCompare(b));
