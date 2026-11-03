@@ -248,19 +248,47 @@ $('flow').addEventListener('click',event=>{if(event.target.closest('[data-flow]'
 $('project').addEventListener('change',async()=>{const result=await api('/api/switch',{mission:$('project').value});if(result){actor='you';snapshot=null;version='working';closeInspector();closeActionPanel();render();feedback('You opened another project. The previous project’s saved work is kept in this running session.');}else $('project').value=state.mission;});
 $('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{feedback('The playground already fills this browser view. Your browser may not support entering full-screen mode here.');}});
 document.addEventListener('fullscreenchange',()=>{$('fullscreen').textContent=document.fullscreenElement?'Exit full screen':'Full screen';});
-document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'){event.preventDefault();if(!busy&&!view().bare&&!snapshot&&version==='working'&&hasDraft())saveContent($('source').value);}if(event.key==='Escape'){$('help-panel').hidden=true;$('help-toggle').setAttribute('aria-expanded','false');closeActionPanel();$('workspace').classList.remove('files-open');$('files-toggle').setAttribute('aria-expanded','false');}});
+document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'){event.preventDefault();if(!$('workspace').hidden&&state&&!busy&&!view().bare&&!snapshot&&version==='working'&&hasDraft())saveContent($('source').value);}if(event.key==='Escape'){$('help-panel').hidden=true;$('help-toggle').setAttribute('aria-expanded','false');closeActionPanel();$('workspace').classList.remove('files-open');$('files-toggle').setAttribute('aria-expanded','false');}});
 window.addEventListener('resize',()=>{if(state&&!$('history-panel').hidden)renderGraph();});
-function renderReference(){
+const referenceChecks={
+ status:['git diff','Read the changed lines behind the file names.'],
+ diff:['git diff --staged','Check staging separately before committing.'],
+ log:['git show HEAD','Inspect the latest commit in detail.'],
+ show:['git log --oneline','Find another commit to inspect.'],
+ add:['git diff --staged','Look for the exact content you intended to stage.'],
+ commit:['git log --oneline','Look for your message at the top of local history.'],
+ restore:['git status','Check which edits are still staged or unstaged.'],
+ branch:['git branch','The asterisk marks your current branch.'],
+ switch:['git status','Check the branch name before making another edit.'],
+ remote:['git remote -v','Inspect where this workspace sends and receives work.'],
+ fetch:['git log --oneline --graph --all','Compare local and remote-tracking branch labels.'],
+ merge:['git status','Check for a completed merge or files needing resolution.'],
+ push:['git status','Check local tracking information, then inspect Shared separately.'],
+ init:['git status','Confirm that Git recognizes the folder as a repository.'],
+ clone:['git status','Run this inside the cloned folder.'],
+ pull:['git status','Check the branch and any remaining work after integration.']
+};
+function renderReference({detail=true}={}){
  const selected=location.hash.split('/')[2]||'status';
  const entry=commandCatalog.find(command=>command.id===selected)||commandCatalog[0];
  const query=$('command-search').value.trim().toLowerCase();
- const matches=commandCatalog.filter(command=>{const text=[command.name,command.group,command.summary,command.when,command.changes,command.stays,command.note,...command.examples.flat()].join(' ').toLowerCase();return query.split(/\s+/).every(word=>text.includes(word));});
- const groups=[...new Set(matches.map(command=>command.group))];
- $('command-list').innerHTML=groups.map(group=>`<div class="reference-group"><h2>${esc(group)}</h2>${matches.filter(command=>command.group===group).map(command=>`<a href="#/commands/${command.id}" ${command.id===entry.id?'aria-current="page"':''}><code>${esc(command.name)}</code><span>${esc(command.summary)}</span></a>`).join('')}</div>`).join('')||'<p class="reference-empty" role="status">No matching commands. Try “stage”, “branch” or “share”.</p>';
- $('command-detail').innerHTML=`<div class="reference-command-heading"><span class="eyebrow">${esc(entry.group)}</span><span class="reference-scope">${entry.referenceOnly?'Real Git · reference only':'Available in this playground'}</span><h2 tabindex="-1">${esc(entry.name)}</h2><p>${esc(entry.summary)}</p></div><section><h3>When would I use it?</h3><p>${esc(entry.when)}</p></section><div class="reference-effects"><section><h3>What changes</h3><p>${esc(entry.changes)}</p></section><section><h3>What stays</h3><p>${esc(entry.stays)}</p></section></div><section class="reference-examples"><h3>Examples</h3>${entry.examples.map(([code,text],index)=>`<div class="reference-example"><pre><code>${esc(code)}</code></pre><p>${esc(text)}</p>${!entry.referenceOnly?`<button class="text-button" data-reference-example="${index}">Put in terminal</button>`:''}</div>`).join('')}</section>${entry.note?`<aside class="reference-note">${esc(entry.note)}</aside>`:''}<div class="reference-bottom"><p>${entry.referenceOnly?'The practice repositories are already set up. This command is explained here for your work with ordinary Git.':'Examples only fill the prompt. You decide whether to run them.'}</p><a href="${entry.docs}" target="_blank" rel="noopener noreferrer">Official Git documentation ↗</a></div>`;
+ const allGroups=[...new Set(commandCatalog.map(command=>command.group))];
+ $('command-groups').innerHTML=allGroups.map(group=>{const first=commandCatalog.find(command=>command.group===group);return `<a href="#/commands/${first.id}" ${!query&&group===entry.group?'aria-current="true"':''}>${esc(group)}<span>${commandCatalog.filter(command=>command.group===group).length}</span></a>`;}).join('');
+ const matches=commandCatalog.filter(command=>{if(!query)return command.group===entry.group;const text=[command.name,command.group,command.summary,command.when,command.changes,command.stays,command.note,...command.examples.flat()].join(' ').toLowerCase();return query.split(/\s+/).every(word=>text.includes(word));});
+ $('command-list-label').textContent=query?`${matches.length} ${matches.length===1?'match':'matches'}. Choose a command to read.`:entry.group;
+ $('reference-search-note').hidden=!query;
+ $('reference-search-note').textContent=query?`Showing ${entry.name} below. Choose a search result to open a different command.`:'';
+ $('command-list').innerHTML=matches.map(command=>`<a href="#/commands/${command.id}" ${command.id===entry.id?'aria-current="page"':''}><code>${esc(command.name)}</code><span>${esc(command.summary)}</span></a>`).join('')||'<p class="reference-empty" role="status">No matching commands. Try “stage”, “branch” or “share”.</p><button id="clear-command-search">Clear search</button>';
+ $('clear-command-search')?.addEventListener('click',()=>{$('command-search').value='';renderReference();$('command-search').focus();});
+ if(!detail&&$('command-detail').hasChildNodes())return;
+ const check=referenceChecks[entry.id];
+ const related=commandCatalog.filter(command=>command.group===entry.group&&command.id!==entry.id);
+ $('command-detail').innerHTML=`<header class="reference-command-heading"><div><h2 tabindex="-1">${esc(entry.name)}</h2><p>${esc(entry.summary)}</p></div><div class="reference-heading-actions"><span class="reference-scope">${entry.referenceOnly?'Reference only · outside this playground':'Available in this playground'}</span><button id="reference-examples-jump">${entry.referenceOnly?'View syntax':'View examples'}</button></div></header><div class="reference-understand"><section><h3>When to use it</h3><p>${esc(entry.when)}</p></section><div class="reference-effects"><section><h3>What changes</h3><p>${esc(entry.changes)}</p></section><section><h3>What stays the same</h3><p>${esc(entry.stays)}</p></section></div>${entry.note?`<aside class="reference-note"><h3>Keep in mind</h3><p>${esc(entry.note)}</p></aside>`:''}<section class="reference-related"><h3>In the same toolkit</h3>${related.map(command=>`<a href="#/commands/${command.id}">${esc(command.name)}<span>${esc(command.summary)}</span></a>`).join('')}</section><a class="reference-docs" href="${entry.docs}" target="_blank" rel="noopener noreferrer">Official Git documentation ↗</a></div><div class="reference-practice"><section class="reference-examples"><h3 id="reference-examples-heading" tabindex="-1">${entry.referenceOnly?'Syntax for real Git':'Try a command'}</h3><p class="reference-instruction">${entry.referenceOnly?'Read here; use this in an ordinary Git repository.':'Fill the terminal, inspect the command, then run it when you’re ready.'}</p>${entry.examples.map(([code,text],index)=>`<div class="reference-example"><pre><code>${esc(code)}</code></pre><p>${esc(text)}</p>${!entry.referenceOnly?`<button data-reference-example="${index}">Put in terminal <span aria-hidden="true">→</span></button>`:''}</div>`).join('')}</section><section class="reference-check"><h3>Check the result</h3><code>${esc(check[0])}</code><p>${esc(check[1])}</p><p class="reference-instruction">${entry.referenceOnly?'The practice repositories are already set up. This command is reference-only here.':'Nothing runs from this page. Your terminal and files are kept.'}</p></section></div>`;
+ $('reference-examples-jump').addEventListener('click',()=>{$('reference-examples-heading').focus({preventScroll:true});$('reference-examples-heading').scrollIntoView({block:'start'});});
  document.querySelectorAll('[data-reference-example]').forEach(button=>{button.disabled=!state||busy||view().bare;button.addEventListener('click',()=>{const code=entry.examples[Number(button.dataset.referenceExample)][0];location.hash='/workspace';suggestCommand(code);});});
  if(state&&view().bare&&!entry.referenceOnly)$('command-detail').insertAdjacentHTML('beforeend','<p class="reference-note">Choose Your workspace or Sam’s workspace before trying a command. Shared has no working folder.</p>');
 }
+$('command-groups').addEventListener('click',event=>{if(event.target.closest('a')){$('command-search').value='';renderReference();}});
 function showPage(focus=false){
  const reference=location.hash.startsWith('#/commands');
  if(reference)closeActionPanel();
@@ -270,8 +298,10 @@ function showPage(focus=false){
  if(reference){$('guide-toggle').setAttribute('aria-current','page');renderReference();if(focus)$('command-detail').querySelector('h2').focus();}
  else{$('nav-workspace').setAttribute('aria-current','page');if(focus&&state)$('command').focus();}
  document.title=reference?'GitCraft | Commands':'GitCraft | Split Workbench';
+ document.querySelector('.skip').textContent=reference?'Skip to command explanation':'Skip to the terminal';
 }
-$('command-search').addEventListener('input',renderReference);
+document.querySelector('.skip').addEventListener('click',event=>{event.preventDefault();(location.hash.startsWith('#/commands')?$('command-detail').querySelector('h2'):$('command')).focus();});
+$('command-search').addEventListener('input',()=>renderReference({detail:false}));
 window.addEventListener('hashchange',()=>showPage(true));
 showPage();
 const initial=await api('/api/state');

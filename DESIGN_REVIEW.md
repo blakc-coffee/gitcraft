@@ -35,3 +35,31 @@ Implemented the user-selected side-by-side format with a tools sidebar and thin 
 
 ## Commands reference
 Commands now opens a dedicated page from the top navigation. The page explains 16 commands, supports purpose-based search, links official documentation and offers explicit prompt-only examples for commands supported by the playground. Route changes stay client-side and keep drafts and transcript. Browser verification passed in an isolated headless instance without touching Brave; see design-qa.md for checks and screenshots.
+
+## Design-skill research and council — 3 November 2026
+
+Decision: retain the revised global navigation, purpose groups, contextual command list, desktop explanation/practice split and selected theme. Revise concrete interaction defects. Use frontend-standards as coordinator, Impeccable for product refinement, product-design-quality for context and rendered verification, and Vercel Web Interface Guidelines for checks. Do not activate or globally install another skill for this task.
+
+Criteria were set before proposals: beginner task clarity; accessibility/navigation; native Git truth and preservation; compatibility with the vanilla buildless stack; incremental capability versus overlap; update safety/maintenance; effort. Three fresh independent planner contexts reviewed the same brief read-only, followed by one round of anonymized peer review. All used the inherited model; no model diversity or guaranteed blindness is claimed.
+
+| Candidate | Current source versus installed | Decision for GitCraft |
+| --- | --- | --- |
+| [Impeccable](https://github.com/pbakaus/impeccable/blob/9fadc41729c38fd47d7ae622b501558653f9d2e9/.agents/skills/impeccable/SKILL.md) | Upstream 4.8.0; installed 4.5.0. Current language strengthens Operate/Read restraint; installed already provides those modes and brief precedence. | Best existing primary design workflow. No specific missing capability established by updating. |
+| [Taste](https://github.com/Leonxlnx/taste-skill/blob/12af471f627f866411b4bd785b19646d3672784c/skills/taste-skill/SKILL.md) | Installed payload excludes product UI. Upstream now has a separate [app-screen workflow](https://github.com/Leonxlnx/taste-skill/blob/12af471f627f866411b4bd785b19646d3672784c/skills/taste-skill/references/app-screens.md), style selection and browser inspector. | Meaningful scope expansion, but overlaps existing guidance. Its author-reported desktop studies do not establish beginner/mobile Git usability. No update activated. |
+| [Anthropic frontend-design](https://github.com/anthropics/skills/blob/ca45fc496a3436251f191354091d557da31c15b5/skills/frontend-design/SKILL.md) | Not installed separately; current source emphasizes intentional brief-specific visual choices and purposeful motion. | Useful alternative; no uncovered capability beyond the installed product workflow. |
+| [Vercel Web Interface Guidelines](https://github.com/vercel-labs/web-interface-guidelines/blob/main/command.md) | Installed 1.0.0 wrapper deliberately fetches the latest checklist. Fresh rules read for this review. | Use the installed wrapper for semantics, focus, forms, motion and overflow. React-specific skills do not fit this vanilla app. |
+| [UI UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | Not installed. Searchable local UX/style/stack guidance and Python tooling. | A broader research catalog is not this build's demonstrated gap. Avoid additional overlapping guidance and tooling maintenance. |
+
+This is a fit comparison, not a universal ranking or controlled benchmark of skill quality. Repository stars and catalog size were not decision criteria. Exact Impeccable and Taste revisions above were downloaded with the system skill-installer into ignored artifacts/skill-review staging folders. Installed/global skills and hooks were untouched; staged scripts were not executed. The review found broad reference/script changes, so these are not silently promoted as safe or beneficial upgrades.
+
+Proposal A emphasized availability copy, mobile content order, tablet order and search announcements. B prioritized the hidden-route save bug, a real examples control and search semantics. C emphasized mobile practice access, tablet source/visual order and source freshness. Peer rankings were B/C/A, B/A/C and B/C/A; reviewers recognized their own proposals. The chairman selected B because it protects learner-authored files, incorporating C's tablet-order correction and A/C's mobile-access guidance. The only material difference was how much mobile content to reorder: a nearby focus-moving examples control was the smaller supported change.
+
+Confirmed and corrected findings:
+
+- app.js:251 — Ctrl/Cmd+S could request a save of the hidden workspace draft from Commands. Reproduction intercepted and aborted one save request, preserving native files. The shortcut is now gated by visible Workspace and initialized state.
+- app.js:286 — action-looking inert availability span replaced with descriptive text and a real View examples/View syntax control, focusing the relevant heading without route change or execution.
+- style.css — removed the intermediate-width CSS reordering that disagreed with DOM traversal. Mobile and tablet follow the source reading sequence.
+- app.js:278 — search results announce counts politely and distinguish the retained command from matches. Typing does not navigate, select a command, replace detail DOM or restart its animation.
+- style.css — default search placeholder measured 3.54:1. Theme-muted text replaces the browser default; representative placeholder and secondary-text ratios now pass 4.5:1.
+
+Validation is bounded to rendered desktop/mobile inspection plus tablet/320px reflow and interaction checks, not a complete accessibility certification. No screen-reader session, actual 200% browser zoom test or learner efficacy study was performed. Search/group navigation should still be observed with beginners before broader redesign. A reproducible failure to discover commands or transfer to real Git would justify revisiting this decision.

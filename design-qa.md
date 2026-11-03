@@ -38,3 +38,17 @@ final result: passed
 - Existing 12 JavaScript checks pass. No new backend behavior was required for the reference page.
 
 Commands page result: passed.
+
+## Navigation and command discovery revision — 3 November 2026
+
+Inspected the incumbent screenshot before editing. The all-catalog sidebar competed with the detail page, and a tall introduction plus a single content column wasted desktop space. The revision uses purpose navigation, a short contextual list, and side-by-side explanation/practice on wide screens. The reference has a single page scroll on mobile, wrapping command links and persistent global navigation.
+
+Updated rendered evidence: artifacts/commands-page-desktop.png (1440×1024) and artifacts/commands-page-mobile.png (390×844). Both were visually inspected; isolated workspace captures also checked the shared header and mobile terminal. Verified 820px intermediate layout. No Brave session was accessed.
+
+Headless interaction checks passed: all 16 commands reachable through search; purpose navigation; no-results and recovery; deep links/reload; unchanged native repository state; draft and transcript preservation; suggestions never execute; reference-only commands unavailable to run; keyboard skip link targets the current page; reduced-motion animation disabled; no horizontal page overflow at tested sizes; no JavaScript errors. Reference browsing made zero API requests. Native git status completed in 227ms in this run, including browser round trip; this is a local measurement, not a latency guarantee. All 12 existing JavaScript tests passed. Backend was unchanged. Native link keyboard behavior and visible focus were retained; no claim of a complete accessibility audit or learner validation.
+
+## Council follow-up verification — 3 November 2026
+
+Reproduced Ctrl/Cmd+S from Commands with an unsaved draft by intercepting and aborting the save request; one request proved the defect without modifying native files. After the route guard, Control+S and Meta+S generated zero saves on Commands. Workspace Control+S still requested a save; that request was aborted for this test as well. Browsing and command suggestions retained zero API requests and unchanged native repository views.
+
+The isolated browser pass also covered a real examples jump/focus, live search count, retained-detail wording and no automatic command selection, reference-only and Shared restrictions, draft/transcript retention, reduced motion, consistent tablet source/visual order, 1440px desktop, 820px tablet, 390px mobile and 320px reflow, and no page overflow or JavaScript errors. Representative placeholder and secondary text pass 4.5:1 contrast after correcting the browser-default 3.54:1 placeholder. Updated desktop/mobile captures were visually inspected. All 12 JavaScript tests passed. Final native status round trip was 294ms; this is not a latency guarantee. Brave and learner files remained untouched. No full assistive-technology audit, actual browser zoom session or learner study was performed.
