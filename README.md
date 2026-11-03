@@ -39,6 +39,7 @@ GitCraft creates **Little Leaf Books**, a fictional bookshop project, for you. Y
 | **Commands** | Opens searchable explanations and examples. Your editor draft and terminal transcript stay in place. |
 | **Files** | Opens file states, optional Git helpers, and **Preview saved site**. The preview uses saved files. |
 | **History** | Shows actual commits and branch references. Select a commit to inspect its files; **Text view** provides a list. |
+| **Compare** | Compares a branch across Your workspace, Sam and Shared, including remembered remote refs and uncommitted work. Reading it runs no commands. |
 | **Help** | Offers explanations and optional ideas to explore. |
 | **New branch / Exchange** | Helps compose branch, fetch, merge, and push commands. Helpers fill the prompt; you still submit it yourself. |
 | **Undo** | Restores the whole playground to before its last mutating action, including other workspaces and Shared. This is one-step recovery, not standard Git undo. |
@@ -70,6 +71,16 @@ Open **Commands** in the top navigation. Browse **Inspect**, **Save work**, **Br
 Each entry explains when to use the command, what changes, what stays unchanged, and how to check the result. **View examples** takes you to the examples. **Put in terminal** returns to Workspace and fills the prompt; it never executes the command. Read it, adjust file or branch names if needed, then submit it yourself.
 
 `init`, `clone`, and `pull` are **reference-only** here. The practice repositories already exist. Receiving work is split into fetch and merge so you can inspect each effect.
+
+## Compare workspaces
+
+Open **Compare** in the left sidebar after a commit, push, or fetch. Choose a branch to see where its saved commit has reached, what each person remembers about Shared, and any uncommitted work in their current checkout.
+
+![Comparison after a push: Your workspace and Shared have the new commit, while Sam's branch and remembered Shared ref still point to the earlier commit.](docs/screenshots/compare-workspaces.png)
+
+This helps explain why pushing does not update Sam's files, or why fetching does not merge a branch. Browser drafts are labelled separately from saved files. **What is this useful for?** inside the drawer explains the distinctions. On small screens, scroll the comparison table sideways.
+
+Opening Compare does not fetch, merge, stage or save anything; it uses the latest state inspected by GitCraft. Different commit IDs are not treated as proof that a branch is ahead or behind. Close the drawer or press Escape to return to the workspace.
 
 ## Try collaboration
 

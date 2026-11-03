@@ -1,4 +1,4 @@
-import {fileState,counts,shortRef,graphLayout,explain,helpTopics,commandCatalog} from '/playground.mjs';
+import {fileState,counts,shortRef,graphLayout,explain,helpTopics,commandCatalog,compareWorkspaces} from '/playground.mjs';
 
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -8,6 +8,32 @@ let drafts={};
 const transcripts={you:'',sam:'',origin:''},commandHistory={you:[],sam:[],origin:[]};
 let historyCursor=0;
 let commandError='';
+let compareBranch='main';
+function closeComparison(focus=false){
+ $('compare-panel').hidden=true;$('compare-toggle').setAttribute('aria-expanded','false');
+ for(const element of document.querySelectorAll('.editor-panel,.console-panel,.files-panel'))element.inert=false;
+ if(focus)$('compare-toggle').focus();
+}
+function renderComparison(){
+ if($('compare-panel').hidden||!state)return;
+ const comparison=compareWorkspaces(state.views,compareBranch);compareBranch=comparison.branch;
+ $('compare-branch').innerHTML=comparison.branches.map(branch=>`<option value="${esc(branch)}">${esc(branch)}</option>`).join('');$('compare-branch').value=compareBranch;
+ const labels={you:'Your workspace',sam:'Sam’s workspace',origin:'Shared'};
+ const relation={same:'Same commit as Shared',different:'Different commit from Shared',unpublished:'Not published to Shared',missing:'No branch here'};
+ const memory={same:'Matches Shared now',different:'Differs from Shared now',unknown:'No remembered ref',removed:'Branch is no longer on Shared'};
+ const commit=entry=>`<strong>${esc(entry.message)}</strong>${entry.id?`<code>${esc(entry.id.slice(0,7))}</code>`:''}`;
+ $('compare-content').innerHTML=`<p class="compare-summary">${esc(comparison.summary)}</p><div class="compare-table-wrap"><table class="compare-table"><caption>Saved branch positions · ${esc(compareBranch)}</caption><thead><tr><th scope="col">State</th>${comparison.copies.map(copy=>`<th scope="col">${labels[copy.actor]}</th>`).join('')}</tr></thead><tbody><tr><th scope="row">Latest commit</th>${comparison.copies.map(copy=>`<td>${commit(copy.commit)}<span class="compare-relation">${copy.actor==='origin'?'Published here':relation[copy.relation]}</span></td>`).join('')}</tr><tr><th scope="row">Remembered Shared<br><small>origin/${esc(compareBranch)}</small></th>${comparison.copies.map(copy=>`<td>${copy.actor==='origin'?'<span>Shared has no local copy to refresh.</span>':`${copy.remembered.id?`<code>${esc(copy.remembered.id.slice(0,7))}</code>`:''}<span>${memory[copy.memory]}</span>`}</td>`).join('')}</tr></tbody></table></div><section class="compare-working"><h3>Uncommitted work</h3><p>These belong to each person’s current checkout. Saving or staging them does not publish them.</p>${comparison.copies.filter(copy=>copy.actor!=='origin').map(copy=>{const current=state.views[copy.actor],draftCount=Object.keys(current.files).filter(name=>{const key=[state.lessonId,copy.actor,current.branch,name].join(':');return Object.hasOwn(drafts,key)&&drafts[key]!==current.files[name].working;}).length;return `<div class="compare-person"><h4>${labels[copy.actor]} <span>on ${esc(copy.branch||'detached HEAD')}</span></h4>${copy.files.length?`<ul>${copy.files.map(file=>`<li><code>${esc(file.name)}</code><span>${file.conflict?'Merge needs resolution':[file.working?'Unstaged edits':'',file.staged?'Staged content':''].filter(Boolean).join(' · ')}</span></li>`).join('')}</ul>`:'<p>No saved file changes.</p>'}${draftCount?`<p class="compare-draft">${draftCount} unsaved browser draft${draftCount===1?'':'s'} · Git cannot see ${draftCount===1?'it':'them'} yet.</p>`:''}</div>`;}).join('')}<p class="compare-shared-note">Shared stores commits. It has no working files or staging area.</p></section>`;
+ const region=$('compare-content').querySelector('.compare-table-wrap');region.tabIndex=0;region.setAttribute('role','region');region.setAttribute('aria-label','Saved branch positions. Scroll horizontally to compare all workspaces.');
+ const hint=document.createElement('p');hint.className='compare-scroll-note';hint.textContent='Scroll sideways to compare all three copies.';region.before(hint);
+}
+function openComparison(){
+ if(!state||busy)return;
+ toggleHistory(false);$('help-panel').hidden=true;$('help-toggle').setAttribute('aria-expanded','false');
+ $('workspace').classList.remove('files-open');$('files-toggle').setAttribute('aria-expanded','false');closeActionPanel();
+ $('compare-panel').hidden=false;$('compare-toggle').setAttribute('aria-expanded','true');
+ for(const element of document.querySelectorAll('.editor-panel,.console-panel,.files-panel'))element.inert=true;
+ renderComparison();$('compare-heading').focus({preventScroll:true});
+}
 function suggestCommand(command){$('command').value=command;$('command').focus();$('command-effect').textContent='Suggested command only. Read it, edit it if needed, then press Enter to execute.';}
 try{drafts=JSON.parse(localStorage.getItem('gitcraft-playground-drafts')||'{}');if(!drafts||typeof drafts!=='object'||Array.isArray(drafts))drafts={};}catch{drafts={};}
 for(const [key,value] of Object.entries(drafts))if(typeof value!=='string'||value.length>8192)delete drafts[key];
@@ -114,6 +140,7 @@ function render(before=null){
  if(!state.views[actor])actor='you';
  if(!projectFiles().includes(file))file=projectFiles()[0];
  const current=view();$('project').value=state.mission;
+ $('compare-toggle').hidden=!state.views.sam||!state.views.origin;
  document.querySelectorAll('[data-actor]').forEach(button=>{button.hidden=!state.views[button.dataset.actor];button.setAttribute('aria-pressed',String(button.dataset.actor===actor));});
  $('workspace-note').textContent=current.bare?'Lab observation: the actual shared repository.':actor==='sam'?'Sam’s independent copy. Your copy stays separate.':'Your independent copy. Shared changes arrive only when you fetch.';
  const branches=current.graph.refs.filter(ref=>ref.name.startsWith('refs/heads/')).map(ref=>shortRef(ref.name));
@@ -123,6 +150,7 @@ function render(before=null){
  if(snapshot&&!current.graph.commits.some(commit=>commit.id===snapshot.commit)){snapshot=null;version='working';}
  renderFiles();if(!$('history-panel').hidden)renderGraph(before);
  if(!$('inspector').hidden)renderInspector();
+ renderComparison();
  output=transcripts[actor];$('output').textContent=output||'Your terminal is ready. Type git status and press Enter.\nThis runs native Git in the selected practice repository.';
  restoreControls();
 }
@@ -166,6 +194,7 @@ function renderPreview(force=false){
  if(force||key!==previewKey){previewKey=key;$('site-preview').src='/preview/'+actor+'/index.html?v='+Date.now();}
 }
 function toggleHistory(open){
+ if(open)closeComparison();
  if(open){$('help-panel').hidden=true;$('help-toggle').setAttribute('aria-expanded','false');}
  $('history-panel').hidden=!open;$('history-toggle').setAttribute('aria-expanded',String(open));
  $('workspace').classList.toggle('with-history',open);if(open)renderGraph();
@@ -185,12 +214,13 @@ async function quickEdit(){
  openFile('README.md');feedback('This sample has a real page, stylesheet and project notes. Edit any of them yourself; no sample edit has been applied.');
 }
 function showHelp(topic){
+ closeComparison();
  toggleHistory(false);
  $('help-panel').hidden=false;$('help-toggle').setAttribute('aria-expanded','true');
  if(topic){const entry=$('help-topics').querySelector(`[data-topic="${topic}"]`);if(entry){entry.open=true;entry.scrollIntoView({block:'nearest'});}}
  $('help-heading').focus({preventScroll:true});
 }
-function panel(html){$('action-panel').innerHTML=html;$('action-panel').hidden=false;$('share-toggle').setAttribute('aria-expanded','true');}
+function panel(html){closeComparison();$('action-panel').innerHTML=html;$('action-panel').hidden=false;$('share-toggle').setAttribute('aria-expanded','true');}
 function closeActionPanel(){$('action-panel').hidden=true;$('share-toggle').setAttribute('aria-expanded','false');}
 function newBranch(){
  if(view().bare)return;
@@ -207,6 +237,10 @@ function exchange(){
 function setActor(next){actor=next;historyCursor=commandHistory[actor].length;$('command').value='';$('command-effect').textContent='Terminal connected to '+names[actor]+'. Nothing ran when you switched.';snapshot=null;version='working';closeInspector();closeActionPanel();render();feedback(view().bare?'You are observing the actual shared repository. This does not refresh either person’s local copy.':`You are now in ${names[actor].toLowerCase()}. The other workspace was kept as it was.`);}
 
 $('files').addEventListener('click',event=>{const open=event.target.closest('[data-file]'),stage=event.target.closest('[data-stage]');if(open)openFile(open.dataset.file);if(stage)suggestCommand('git add '+stage.dataset.stage);});
+$('compare-toggle').addEventListener('click',()=>{$('compare-panel').hidden?openComparison():closeComparison(true);});
+$('close-compare').addEventListener('click',()=>closeComparison(true));
+$('compare-branch').addEventListener('change',()=>{compareBranch=$('compare-branch').value;renderComparison();});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('compare-panel').hidden)closeComparison(true);});
 $('prepared').addEventListener('click',event=>{const button=event.target.closest('[data-unstage]');if(button)suggestCommand('git restore --staged '+button.dataset.unstage);});
 $('graph').addEventListener('click',event=>{const button=event.target.closest('[data-commit]');if(button)inspectCommit(button.dataset.commit);});
 document.querySelectorAll('[data-actor]').forEach(button=>button.addEventListener('click',()=>setActor(button.dataset.actor)));
@@ -243,10 +277,10 @@ $('close-console').addEventListener('click',()=>{$('workspace').classList.toggle
 $('console-form').addEventListener('submit',async event=>{event.preventDefault();const command=$('command').value.trim();if(command&&!busy){commandHistory[actor].push(command);historyCursor=commandHistory[actor].length;const result=await runGit(command,command.split(/\s+/)[1]);if(result?.code===0)$('command').value='';$('command').focus();}});
 $('command').addEventListener('keydown',event=>{if(event.key==='ArrowUp'||event.key==='ArrowDown'){event.preventDefault();const history=commandHistory[actor];historyCursor=Math.max(0,Math.min(history.length,historyCursor+(event.key==='ArrowUp'?-1:1)));$('command').value=history[historyCursor]||'';}});
 $('graph-text-toggle').addEventListener('click',()=>{const open=$('graph-text').hidden;$('graph-text').hidden=!open;$('graph-text-toggle').setAttribute('aria-expanded',String(open));});
-$('files-toggle').addEventListener('click',()=>{const open=$('workspace').classList.toggle('files-open');$('files-toggle').setAttribute('aria-expanded',String(open));});
+$('files-toggle').addEventListener('click',()=>{closeComparison();const open=$('workspace').classList.toggle('files-open');$('files-toggle').setAttribute('aria-expanded',String(open));});
 $('flow').addEventListener('click',event=>{if(event.target.closest('[data-flow]')){$('workspace').classList.add('files-open');$('files-toggle').setAttribute('aria-expanded','true');const target=event.target.closest('[data-flow]').dataset.flow==='prepared'?$('message'):$('files').querySelector('button');target?.focus();}});
 $('project').addEventListener('change',async()=>{const result=await api('/api/switch',{mission:$('project').value});if(result){actor='you';snapshot=null;version='working';closeInspector();closeActionPanel();render();feedback('You opened another project. The previous project’s saved work is kept in this running session.');}else $('project').value=state.mission;});
-document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'){event.preventDefault();if(!$('workspace').hidden&&state&&!busy&&!view().bare&&!snapshot&&version==='working'&&hasDraft())saveContent($('source').value);}if(event.key==='Escape'){$('help-panel').hidden=true;$('help-toggle').setAttribute('aria-expanded','false');closeActionPanel();$('workspace').classList.remove('files-open');$('files-toggle').setAttribute('aria-expanded','false');}});
+document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'){event.preventDefault();if(!$('workspace').hidden&&!$('inspector').inert&&state&&!busy&&!view().bare&&!snapshot&&version==='working'&&hasDraft())saveContent($('source').value);}if(event.key==='Escape'){$('help-panel').hidden=true;$('help-toggle').setAttribute('aria-expanded','false');closeActionPanel();$('workspace').classList.remove('files-open');$('files-toggle').setAttribute('aria-expanded','false');}});
 window.addEventListener('resize',()=>{if(state&&!$('history-panel').hidden)renderGraph();});
 const referenceChecks={
  status:['git diff','Read the changed lines behind the file names.'],
@@ -289,7 +323,7 @@ function renderReference({detail=true}={}){
 $('command-groups').addEventListener('click',event=>{if(event.target.closest('a')){$('command-search').value='';renderReference();}});
 function showPage(focus=false){
  const reference=location.hash.startsWith('#/commands');
- if(reference)closeActionPanel();
+ if(reference){closeActionPanel();closeComparison();}
  $('commands-page').hidden=!reference;$('workspace').hidden=reference;
  for(const element of document.querySelectorAll('.workspace-bar,.project-actions,.status-bar'))element.hidden=reference;
  $('nav-workspace').toggleAttribute('aria-current',!reference);$('guide-toggle').toggleAttribute('aria-current',reference);

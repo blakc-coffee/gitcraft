@@ -1,4 +1,27 @@
 export const fileNames = ['schedule.md','accessibility.md'];
+// Compare observed native refs; different commit IDs never imply ancestry.
+export function compareWorkspaces(views, branch='main') {
+ const branches=[...new Set(Object.values(views).flatMap(view=>view.graph.refs.filter(ref=>ref.name.startsWith('refs/heads/')).map(ref=>ref.name.slice(11))))].sort((a,b)=>a==='main'?-1:b==='main'?1:a.localeCompare(b));
+ if(!branches.includes(branch))branch=branches[0]||'main';
+ const tip=(view,name)=>view?.graph.refs.find(ref=>ref.name===name)?.target||null;
+ const shared=tip(views.origin,'refs/heads/'+branch);
+ const commit=(view,id)=>({id,message:id?(view?.graph.commits.find(node=>node.id===id)?.message||'Details outside the visible history'):'No branch here'});
+ const copies=['you','sam','origin'].filter(actor=>views[actor]).map(actor=>{
+  const view=views[actor],id=tip(view,'refs/heads/'+branch),remembered=actor==='origin'?null:tip(view,'refs/remotes/origin/'+branch);
+  const relation=!id?'missing':!shared?'unpublished':id===shared?'same':'different';
+  const memory=!remembered?'unknown':!shared?'removed':remembered===shared?'same':'different';
+  const files=view.bare?[]:Object.entries(view.files).filter(([,file])=>file.working!==file.staged||file.staged!==file.committed).map(([name,file])=>({name,conflict:file.staged===null,working:file.working!==file.staged,staged:file.staged!==null&&file.staged!==file.committed}));
+  return {actor,branch:view.branch,commit:commit(view,id),relation,remembered:commit(view,remembered),memory,files};
+ });
+ const you=copies.find(copy=>copy.actor==='you'),sam=copies.find(copy=>copy.actor==='sam');
+ let summary;
+ if(!shared)summary=`${branch} is not published to Shared. A push shares committed work, not working-file edits.`;
+ else if(you?.relation==='same'&&sam?.relation==='same')summary=`All three ${branch} branches point to the same commit. Uncommitted work can still differ.`;
+ else if(you?.relation==='same'&&sam?.relation==='different')summary=`Your ${branch} matches Shared. Sam’s ${branch} points to a different commit. Pushing does not update Sam’s files.`;
+ else if(sam?.relation==='same'&&you?.relation==='different')summary=`Sam’s ${branch} matches Shared. Your ${branch} points to a different commit. Fetching and merging are separate steps.`;
+ else summary=`These ${branch} branch positions differ. Different commits do not tell you which is ahead; inspect History before combining work.`;
+ return {branch,branches,copies,summary};
+}
 export function fileState(file) {
   if (file.staged === null) return {conflict:true,working:true,prepared:false,label:'Needs a merge'};
   const working=file.working!==file.staged, prepared=file.staged!==file.committed;

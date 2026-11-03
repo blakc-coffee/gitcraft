@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fileState,counts,graphLayout,effects,explain} from '../gitcraft/web/playground.mjs';
+import {fileState,counts,graphLayout,effects,explain,compareWorkspaces} from '../gitcraft/web/playground.mjs';
 const copy=value=>structuredClone(value);
 function fixture(){const graph={commits:[{id:'a',parents:[],message:'Start'}],refs:[{name:'refs/heads/main',target:'a'},{name:'refs/remotes/origin/main',target:'a'}]};const files={'schedule.md':{working:'A',staged:'A',committed:'A'},'accessibility.md':{working:'B',staged:'B',committed:'B'}};return{views:{you:{bare:false,head:'a',files,graph},origin:{bare:true,head:'a',graph:{commits:graph.commits,refs:[{name:'refs/heads/main',target:'a'}]}}}};}
 test('a file can be edited again after preparation',()=>{
@@ -32,4 +32,31 @@ test('publishing a different shared branch is visible even when shared main stay
  const before=fixture(),after=copy(before);after.views.origin.graph.refs.push({name:'refs/heads/idea',target:'new'});
  assert.equal(after.views.origin.head,before.views.origin.head);assert.equal(effects(before,after,'you').shared,true);
  assert.match(explain(before,after,'you','push'),/reached Shared/);
+});
+
+function collaborators(){const state=fixture();state.views.you.branch='main';state.views.sam=copy(state.views.you);return state.views;}
+test('comparison distinguishes published history from an unfetched collaborator copy',()=>{
+ const views=collaborators();views.you.graph.refs[0].target='b';views.you.head='b';views.origin.graph.refs[0].target='b';
+ const result=compareWorkspaces(views);
+ assert.equal(result.copies[0].relation,'same');assert.equal(result.copies[1].relation,'different');assert.equal(result.copies[1].memory,'different');
+ assert.match(result.summary,/Pushing does not update Sam’s files/);
+ views.sam.graph.refs[1].target='b';
+ const fetched=compareWorkspaces(views).copies[1];assert.equal(fetched.memory,'same');assert.equal(fetched.relation,'different');
+});
+test('comparison keeps same commits separate from uncommitted work and conflicts',()=>{
+ const views=collaborators();views.you.files['schedule.md']={working:'C',staged:'B',committed:'A'};views.sam.files['schedule.md'].staged=null;
+ const result=compareWorkspaces(views);
+ assert.match(result.summary,/same commit/);assert.deepEqual(result.copies[0].files[0],{name:'schedule.md',working:true,staged:true,conflict:false});
+ assert.equal(result.copies[1].files[0].conflict,true);assert.deepEqual(result.copies[2].files,[]);
+});
+test('comparison handles unpublished and missing branches without inventing history',()=>{
+ const views=collaborators();views.you.graph.refs.push({name:'refs/heads/idea',target:'outside-window'});views.you.branch='idea';views.you.graph.truncated=true;
+ const result=compareWorkspaces(views,'idea');
+ assert.equal(result.copies[0].relation,'unpublished');assert.equal(result.copies[1].relation,'missing');assert.equal(result.copies[2].relation,'missing');
+ assert.match(result.copies[0].commit.message,/outside the visible history/);assert.match(result.summary,/not published/);
+ assert.equal(compareWorkspaces(views,'deleted').branch,'main');
+});
+test('comparison uses the selected branch ref rather than the current checkout HEAD',()=>{
+ const views=collaborators();views.you.head='other';views.you.branch='idea';views.you.graph.refs.push({name:'refs/heads/idea',target:'other'});
+ const result=compareWorkspaces(views,'main');assert.equal(result.copies[0].commit.id,'a');assert.equal(result.copies[0].branch,'idea');assert.equal(result.copies[0].relation,'same');
 });
