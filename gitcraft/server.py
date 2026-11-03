@@ -127,7 +127,7 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="gitcraft-") as root:
-        server = make_server(root, args.port)
+        server = make_server(root, args.port, initial_lab=create_lab(root, "playground"))
         print(f"GitCraft local prototype: http://127.0.0.1:{server.server_port}", flush=True)
         print("One learner; temporary lesson repositories. Ctrl+C stops the server and removes them.", flush=True)
         try:

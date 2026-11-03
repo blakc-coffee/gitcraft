@@ -149,4 +149,4 @@ node --test tests/test_lessons.mjs tests/test_playground.mjs
 
 These screenshots were captured from the running app in a separate disposable session. The first-commit and two-way collaboration examples were executed against native Git. Browser checks used isolated headless Chromium without accessing a personal browser profile.
 
-For more detail, see [validation notes](design-qa.md), [product context](PRODUCT.md), [design decisions](DESIGN.md), and [research, curriculum, and proposed PRD](docs/product-intelligence/README.md). Research includes historical alternatives; this README describes the current app.
+For more detail, see [validation notes](design-qa.md), [performance implementation and measurements](docs/PERFORMANCE.md), [product context](PRODUCT.md), [design decisions](DESIGN.md), and [research, curriculum, and proposed PRD](docs/product-intelligence/README.md). Research includes historical alternatives; this README describes the current app.

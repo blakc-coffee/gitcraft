@@ -1,0 +1,605 @@
+{
+  "date": "2026-11-04",
+  "baselineCommit": "df561a4",
+  "method": "3 paired disposable fixture sequences; interleaved order; median/min/max, not tail percentiles; engine timings exclude HTTP/browser; startup includes obsolete staging only in baseline",
+  "summary": [
+    {
+      "action": "startup_to_initial_playground_state",
+      "baseline": {
+        "ms": 10345.7,
+        "gitProcesses": 53,
+        "gitMs": 9528.43,
+        "undoMs": 0,
+        "signatureMs": 203.81,
+        "minMs": 9091.82,
+        "maxMs": 10942.81
+      },
+      "candidate": {
+        "ms": 5428.29,
+        "gitProcesses": 25,
+        "gitMs": 4785.77,
+        "undoMs": 0,
+        "signatureMs": 158.96,
+        "minMs": 5093.07,
+        "maxMs": 5584.47
+      },
+      "medianReductionPercent": 47.5
+    },
+    {
+      "action": "warm_status",
+      "baseline": {
+        "ms": 206.24,
+        "gitProcesses": 1,
+        "gitMs": 125.04,
+        "undoMs": 0,
+        "signatureMs": 80.25,
+        "minMs": 196.55,
+        "maxMs": 240.26
+      },
+      "candidate": {
+        "ms": 190.13,
+        "gitProcesses": 1,
+        "gitMs": 114.81,
+        "undoMs": 0,
+        "signatureMs": 74.8,
+        "minMs": 174.66,
+        "maxMs": 224.13
+      },
+      "medianReductionPercent": 7.8
+    },
+    {
+      "action": "save",
+      "baseline": {
+        "ms": 1530.28,
+        "gitProcesses": 9,
+        "gitMs": 1005.11,
+        "undoMs": 372.19,
+        "signatureMs": 106.07,
+        "minMs": 1485.92,
+        "maxMs": 1676.13
+      },
+      "candidate": {
+        "ms": 640.66,
+        "gitProcesses": 1,
+        "gitMs": 119.05,
+        "undoMs": 390.01,
+        "signatureMs": 116.27,
+        "minMs": 627.71,
+        "maxMs": 646.67
+      },
+      "medianReductionPercent": 58.1
+    },
+    {
+      "action": "stage",
+      "baseline": {
+        "ms": 1852.56,
+        "gitProcesses": 10,
+        "gitMs": 1263.89,
+        "undoMs": 471.7,
+        "signatureMs": 106.49,
+        "minMs": 1751.81,
+        "maxMs": 1891.05
+      },
+      "candidate": {
+        "ms": 1065.76,
+        "gitProcesses": 3,
+        "gitMs": 511.54,
+        "undoMs": 445.09,
+        "signatureMs": 108.17,
+        "minMs": 1065.15,
+        "maxMs": 1244.33
+      },
+      "medianReductionPercent": 42.5
+    },
+    {
+      "action": "commit",
+      "baseline": {
+        "ms": 1866.33,
+        "gitProcesses": 10,
+        "gitMs": 1301.56,
+        "undoMs": 462.56,
+        "signatureMs": 102.46,
+        "minMs": 1812.53,
+        "maxMs": 1906.06
+      },
+      "candidate": {
+        "ms": 1306.16,
+        "gitProcesses": 6,
+        "gitMs": 772.85,
+        "undoMs": 442.29,
+        "signatureMs": 106.12,
+        "minMs": 1294.83,
+        "maxMs": 1336.54
+      },
+      "medianReductionPercent": 30.0
+    },
+    {
+      "action": "push",
+      "baseline": {
+        "ms": 2870.22,
+        "gitProcesses": 15,
+        "gitMs": 2211.59,
+        "undoMs": 452.46,
+        "signatureMs": 122.6,
+        "minMs": 2776.8,
+        "maxMs": 2899.23
+      },
+      "candidate": {
+        "ms": 2207.42,
+        "gitProcesses": 9,
+        "gitMs": 1612.91,
+        "undoMs": 445.05,
+        "signatureMs": 149.44,
+        "minMs": 2121.24,
+        "maxMs": 2330.39
+      },
+      "medianReductionPercent": 23.1
+    },
+    {
+      "action": "fetch",
+      "baseline": {
+        "ms": 2454.76,
+        "gitProcesses": 10,
+        "gitMs": 1664.09,
+        "undoMs": 501.81,
+        "signatureMs": 113.97,
+        "minMs": 2185.53,
+        "maxMs": 2543.54
+      },
+      "candidate": {
+        "ms": 1683.98,
+        "gitProcesses": 6,
+        "gitMs": 1100.01,
+        "undoMs": 459.29,
+        "signatureMs": 115.3,
+        "minMs": 1595.71,
+        "maxMs": 1879.0
+      },
+      "medianReductionPercent": 31.4
+    },
+    {
+      "action": "merge",
+      "baseline": {
+        "ms": 1970.25,
+        "gitProcesses": 10,
+        "gitMs": 1321.76,
+        "undoMs": 516.59,
+        "signatureMs": 125.26,
+        "minMs": 1906.12,
+        "maxMs": 2061.38
+      },
+      "candidate": {
+        "ms": 1625.79,
+        "gitProcesses": 6,
+        "gitMs": 984.84,
+        "undoMs": 517.92,
+        "signatureMs": 124.91,
+        "minMs": 1567.0,
+        "maxMs": 1653.7
+      },
+      "medianReductionPercent": 17.5
+    }
+  ],
+  "samples": [
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "actions": [
+        {
+          "action": "startup_to_initial_playground_state",
+          "ms": 10942.81,
+          "gitProcesses": 53,
+          "gitMs": 10209.22,
+          "undoMs": 0,
+          "signatureMs": 214.99
+        },
+        {
+          "action": "warm_status",
+          "ms": 240.26,
+          "gitProcesses": 1,
+          "gitMs": 159.38,
+          "undoMs": 0,
+          "signatureMs": 80.25
+        },
+        {
+          "action": "save",
+          "ms": 1676.13,
+          "gitProcesses": 9,
+          "gitMs": 1213.06,
+          "undoMs": 334.64,
+          "signatureMs": 113.95
+        },
+        {
+          "action": "stage",
+          "ms": 1852.56,
+          "gitProcesses": 10,
+          "gitMs": 1263.89,
+          "undoMs": 471.7,
+          "signatureMs": 106.49
+        },
+        {
+          "action": "commit",
+          "ms": 1866.33,
+          "gitProcesses": 10,
+          "gitMs": 1301.56,
+          "undoMs": 462.56,
+          "signatureMs": 91.91
+        },
+        {
+          "action": "push",
+          "ms": 2776.8,
+          "gitProcesses": 15,
+          "gitMs": 2202.49,
+          "undoMs": 452.46,
+          "signatureMs": 115.34
+        },
+        {
+          "action": "fetch",
+          "ms": 2185.53,
+          "gitProcesses": 10,
+          "gitMs": 1577.53,
+          "undoMs": 485.68,
+          "signatureMs": 113.97
+        },
+        {
+          "action": "merge",
+          "ms": 1906.12,
+          "gitProcesses": 10,
+          "gitMs": 1256.89,
+          "undoMs": 516.59,
+          "signatureMs": 124.95
+        }
+      ]
+    },
+    {
+      "pair": 1,
+      "variant": "candidate",
+      "actions": [
+        {
+          "action": "startup_to_initial_playground_state",
+          "ms": 5093.07,
+          "gitProcesses": 25,
+          "gitMs": 4527.28,
+          "undoMs": 0,
+          "signatureMs": 158.36
+        },
+        {
+          "action": "warm_status",
+          "ms": 190.13,
+          "gitProcesses": 1,
+          "gitMs": 114.81,
+          "undoMs": 0,
+          "signatureMs": 74.8
+        },
+        {
+          "action": "save",
+          "ms": 646.67,
+          "gitProcesses": 1,
+          "gitMs": 108.98,
+          "undoMs": 402.44,
+          "signatureMs": 120.7
+        },
+        {
+          "action": "stage",
+          "ms": 1244.33,
+          "gitProcesses": 3,
+          "gitMs": 651.28,
+          "undoMs": 473.39,
+          "signatureMs": 109.78
+        },
+        {
+          "action": "commit",
+          "ms": 1336.54,
+          "gitProcesses": 6,
+          "gitMs": 778.77,
+          "undoMs": 442.29,
+          "signatureMs": 106.12
+        },
+        {
+          "action": "push",
+          "ms": 2330.39,
+          "gitProcesses": 9,
+          "gitMs": 1685.67,
+          "undoMs": 487.18,
+          "signatureMs": 149.44
+        },
+        {
+          "action": "fetch",
+          "ms": 1879.0,
+          "gitProcesses": 6,
+          "gitMs": 1201.19,
+          "undoMs": 521.98,
+          "signatureMs": 145.07
+        },
+        {
+          "action": "merge",
+          "ms": 1625.79,
+          "gitProcesses": 6,
+          "gitMs": 984.84,
+          "undoMs": 517.92,
+          "signatureMs": 112.9
+        }
+      ]
+    },
+    {
+      "pair": 2,
+      "variant": "candidate",
+      "actions": [
+        {
+          "action": "startup_to_initial_playground_state",
+          "ms": 5584.47,
+          "gitProcesses": 25,
+          "gitMs": 4978.38,
+          "undoMs": 0,
+          "signatureMs": 158.96
+        },
+        {
+          "action": "warm_status",
+          "ms": 174.66,
+          "gitProcesses": 1,
+          "gitMs": 114.65,
+          "undoMs": 0,
+          "signatureMs": 59.51
+        },
+        {
+          "action": "save",
+          "ms": 640.66,
+          "gitProcesses": 1,
+          "gitMs": 119.68,
+          "undoMs": 390.01,
+          "signatureMs": 116.27
+        },
+        {
+          "action": "stage",
+          "ms": 1065.76,
+          "gitProcesses": 3,
+          "gitMs": 511.54,
+          "undoMs": 431.08,
+          "signatureMs": 108.17
+        },
+        {
+          "action": "commit",
+          "ms": 1306.16,
+          "gitProcesses": 6,
+          "gitMs": 772.85,
+          "undoMs": 417.83,
+          "signatureMs": 106.63
+        },
+        {
+          "action": "push",
+          "ms": 2207.42,
+          "gitProcesses": 9,
+          "gitMs": 1612.91,
+          "undoMs": 445.05,
+          "signatureMs": 139.9
+        },
+        {
+          "action": "fetch",
+          "ms": 1683.98,
+          "gitProcesses": 6,
+          "gitMs": 1100.01,
+          "undoMs": 459.29,
+          "signatureMs": 115.3
+        },
+        {
+          "action": "merge",
+          "ms": 1567.0,
+          "gitProcesses": 6,
+          "gitMs": 916.58,
+          "undoMs": 510.18,
+          "signatureMs": 128.35
+        }
+      ]
+    },
+    {
+      "pair": 2,
+      "variant": "baseline",
+      "actions": [
+        {
+          "action": "startup_to_initial_playground_state",
+          "ms": 9091.82,
+          "gitProcesses": 53,
+          "gitMs": 8275.65,
+          "undoMs": 0,
+          "signatureMs": 203.81
+        },
+        {
+          "action": "warm_status",
+          "ms": 206.24,
+          "gitProcesses": 1,
+          "gitMs": 125.04,
+          "undoMs": 0,
+          "signatureMs": 80.67
+        },
+        {
+          "action": "save",
+          "ms": 1530.28,
+          "gitProcesses": 9,
+          "gitMs": 1005.11,
+          "undoMs": 416.13,
+          "signatureMs": 96.86
+        },
+        {
+          "action": "stage",
+          "ms": 1891.05,
+          "gitProcesses": 10,
+          "gitMs": 1268.95,
+          "undoMs": 495.92,
+          "signatureMs": 115.36
+        },
+        {
+          "action": "commit",
+          "ms": 1906.06,
+          "gitProcesses": 10,
+          "gitMs": 1323.51,
+          "undoMs": 465.39,
+          "signatureMs": 110.7
+        },
+        {
+          "action": "push",
+          "ms": 2870.22,
+          "gitProcesses": 15,
+          "gitMs": 2211.59,
+          "undoMs": 529.28,
+          "signatureMs": 122.6
+        },
+        {
+          "action": "fetch",
+          "ms": 2454.76,
+          "gitProcesses": 10,
+          "gitMs": 1814.21,
+          "undoMs": 501.81,
+          "signatureMs": 129.53
+        },
+        {
+          "action": "merge",
+          "ms": 1970.25,
+          "gitProcesses": 10,
+          "gitMs": 1321.76,
+          "undoMs": 514.26,
+          "signatureMs": 125.26
+        }
+      ]
+    },
+    {
+      "pair": 3,
+      "variant": "baseline",
+      "actions": [
+        {
+          "action": "startup_to_initial_playground_state",
+          "ms": 10345.7,
+          "gitProcesses": 53,
+          "gitMs": 9528.43,
+          "undoMs": 0,
+          "signatureMs": 196.06
+        },
+        {
+          "action": "warm_status",
+          "ms": 196.55,
+          "gitProcesses": 1,
+          "gitMs": 120.01,
+          "undoMs": 0,
+          "signatureMs": 76.04
+        },
+        {
+          "action": "save",
+          "ms": 1485.92,
+          "gitProcesses": 9,
+          "gitMs": 993.9,
+          "undoMs": 372.19,
+          "signatureMs": 106.07
+        },
+        {
+          "action": "stage",
+          "ms": 1751.81,
+          "gitProcesses": 10,
+          "gitMs": 1209.88,
+          "undoMs": 430.92,
+          "signatureMs": 101.42
+        },
+        {
+          "action": "commit",
+          "ms": 1812.53,
+          "gitProcesses": 10,
+          "gitMs": 1289.41,
+          "undoMs": 411.76,
+          "signatureMs": 102.46
+        },
+        {
+          "action": "push",
+          "ms": 2899.23,
+          "gitProcesses": 15,
+          "gitMs": 2304.96,
+          "undoMs": 431.24,
+          "signatureMs": 154.81
+        },
+        {
+          "action": "fetch",
+          "ms": 2543.54,
+          "gitProcesses": 10,
+          "gitMs": 1664.09,
+          "undoMs": 758.15,
+          "signatureMs": 111.93
+        },
+        {
+          "action": "merge",
+          "ms": 2061.38,
+          "gitProcesses": 10,
+          "gitMs": 1346.47,
+          "undoMs": 568.81,
+          "signatureMs": 136.72
+        }
+      ]
+    },
+    {
+      "pair": 3,
+      "variant": "candidate",
+      "actions": [
+        {
+          "action": "startup_to_initial_playground_state",
+          "ms": 5428.29,
+          "gitProcesses": 25,
+          "gitMs": 4785.77,
+          "undoMs": 0,
+          "signatureMs": 163.02
+        },
+        {
+          "action": "warm_status",
+          "ms": 224.13,
+          "gitProcesses": 1,
+          "gitMs": 145.49,
+          "undoMs": 0,
+          "signatureMs": 78.09
+        },
+        {
+          "action": "save",
+          "ms": 627.71,
+          "gitProcesses": 1,
+          "gitMs": 119.05,
+          "undoMs": 381.37,
+          "signatureMs": 113.78
+        },
+        {
+          "action": "stage",
+          "ms": 1065.15,
+          "gitProcesses": 3,
+          "gitMs": 508.82,
+          "undoMs": 445.09,
+          "signatureMs": 102.7
+        },
+        {
+          "action": "commit",
+          "ms": 1294.83,
+          "gitProcesses": 6,
+          "gitMs": 735.37,
+          "undoMs": 445.85,
+          "signatureMs": 104.86
+        },
+        {
+          "action": "push",
+          "ms": 2121.24,
+          "gitProcesses": 9,
+          "gitMs": 1516.0,
+          "undoMs": 444.82,
+          "signatureMs": 150.49
+        },
+        {
+          "action": "fetch",
+          "ms": 1595.71,
+          "gitProcesses": 6,
+          "gitMs": 1024.91,
+          "undoMs": 446.8,
+          "signatureMs": 114.66
+        },
+        {
+          "action": "merge",
+          "ms": 1653.7,
+          "gitProcesses": 6,
+          "gitMs": 994.84,
+          "undoMs": 523.75,
+          "signatureMs": 124.91
+        }
+      ]
+    }
+  ]
+}

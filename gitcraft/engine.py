@@ -52,11 +52,13 @@ class Lab:
                          "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
                          "GIT_TERMINAL_PROMPT": "0", "GIT_EDITOR": "true",
                          "GIT_MERGE_AUTOEDIT": "no", "GIT_PAGER": "cat",
-                         "GIT_ALLOW_PROTOCOL": "file", "LC_ALL": "C"})
+                         "GIT_ALLOW_PROTOCOL": "file", "LC_ALL": "C",
+                         "GIT_OPTIONAL_LOCKS": "0"})
         self.repos = self.root / "repos"
         self.repos.mkdir()
         self.events = []
         self._view_cache = {}
+        self._view_parts = {}
         self.sam_commit = None
         self.undo_available = False
         self.undo_metadata = None
@@ -237,6 +239,9 @@ class Lab:
         self.undo_available = True
 
     def _restore_repositories(self, source):
+        # Replacement copies can preserve timestamps. Never reuse old views.
+        self._view_cache.clear()
+        self._view_parts.clear()
         ready = self.root / "restore-ready"
         self._remove_owned(ready)
         shutil.copytree(source, ready)
@@ -284,16 +289,17 @@ class Lab:
                 raise LabError("Preview is available for the bookshop sample.")
             return self._file(actor, name).read_text(encoding="utf-8")
 
-    def _graph(self, actor):
+    def _graph(self, actor, refs=None):
         rows = self._must(actor, "log", "--topo-order", "--all", "--format=%H%x1f%P%x1f%s%x1f%an", "-61").splitlines()
         commits = []
         for row in rows[:60]:
             oid, parents, message, author = row.split("\x1f", 3)
             commits.append({"id": oid, "parents": parents.split(), "message": message, "author": author})
-        refs = []
-        for row in self._must(actor, "for-each-ref", "--format=%(refname)%09%(objectname)", "refs/heads", "refs/remotes").splitlines():
-            name, oid = row.split("\t", 1)
-            refs.append({"name": name, "target": oid})
+        if refs is None:
+            refs = []
+            for row in self._must(actor, "for-each-ref", "--format=%(refname)%09%(objectname)", "refs/heads", "refs/remotes").splitlines():
+                name, oid = row.split("\t", 1)
+                refs.append({"name": name, "target": oid})
         return {"commits": commits, "refs": refs, "truncated": len(rows) > 60}
 
     def _repo_signature(self, actor):
@@ -305,7 +311,7 @@ class Lab:
             info = path.lstat()
             # Git creates/removes index.lock during status. Directory mtimes
             # reflect that temporary bookkeeping, not a changed repository.
-            entries.append((str(path.relative_to(repo)), info.st_mode,
+            entries.append((path.relative_to(repo).as_posix(), info.st_mode,
                             None if stat.S_ISDIR(info.st_mode) else
                             (info.st_size, info.st_mtime_ns, info.st_ctime_ns)))
         return tuple(entries)
@@ -332,31 +338,102 @@ class Lab:
             offset += size + 1
         return versions
 
+    def _view_dependencies(self, actor, signature):
+        """Partition observed files, without assuming which command changed them."""
+        metadata, index, objects = [], [], {}
+        prefix = "" if actor == "origin" else ".git/"
+        for entry in signature:
+            name, mode, _ = entry
+            if stat.S_ISDIR(mode) or not name.startswith(prefix):
+                continue
+            name = name[len(prefix):]
+            if name == "index":
+                index.append(entry)
+            elif re.fullmatch(r"objects/(?:[0-9a-f]{2}/(?:[0-9a-f]{38}|[0-9a-f]{62})|pack/pack-[0-9a-f]+\.(?:pack|idx|rev))", name):
+                objects[name] = entry
+            elif not name.startswith("logs/"):
+                # HEAD, loose/packed refs, config, merge/shallow/replacement
+                # metadata and unfamiliar Git files all invalidate conservatively.
+                metadata.append(entry)
+        return tuple(metadata), tuple(index), objects
+
+    def _view_metadata(self, actor):
+        """Read native branch/ref/history data only when its inputs change."""
+        bare = actor == "origin"
+        rows = self._must(actor, "for-each-ref",
+                          "--format=%(refname)%09%(objectname)%09%(HEAD)%09%(upstream)%09%(upstream:short)%09%(refname:short)",
+                          "refs/heads", "refs/remotes").splitlines()
+        records = [row.split("\t") for row in rows]
+        refs = [{"name": row[0], "target": row[1]} for row in records]
+        targets = {ref["name"]: ref["target"] for ref in refs}
+        current = next((row for row in records if row[2] == "*"), None)
+        if current:
+            branch_name, head = current[5], current[1]
+        else:
+            # Detached or unusual symbolic HEAD: retain native resolution.
+            branch_result = self._git(actor, "symbolic-ref", "--short", "HEAD")
+            branch_name = branch_result["output"] if branch_result["code"] == 0 else None
+            head = self._ref(actor, "HEAD")
+        tracking_name = tracking = None
+        if not bare and current and current[3]:
+            # A configured upstream may have no target, or be outside the ref
+            # namespaces collected above. Native fallback preserves both cases.
+            if current[3] in targets:
+                tracking_name, tracking = current[4], targets[current[3]]
+            else:
+                upstream = self._git(actor, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
+                tracking_name = upstream["output"] if upstream["code"] == 0 else None
+                tracking = self._ref(actor, "@{upstream}")
+        result = {"bare": bare, "head": head,
+                        "branch": branch_name, "graph": self._graph(actor, refs),
+                        "trackingName": tracking_name,
+                        "tracking": tracking,
+                        "history": self._must(actor, "log", "--oneline", "--graph", "--all", "-8"),
+                        "files": {}}
+        return result
+
     def _view(self, actor):
         signature = self._repo_signature(actor)
         cached = self._view_cache.get(actor)
         if cached and cached[0] == signature:
             # A returned before-state must not alias a future cached view.
             return copy.deepcopy(cached[1])
+        metadata_key, index_key, objects = self._view_dependencies(actor, signature)
+        parts = self._view_parts.get(actor)
+        # Adding unreachable immutable objects (e.g. git add's blobs) cannot
+        # change ref-based history. Modification/removal, including repacking,
+        # needs a fresh native inspection. Keep observing the whole object store.
+        objects_changed = parts is not None and any(
+            objects.get(name) != entry for name, entry in parts["objects"].items())
+        if not parts or parts["metadata_key"] != metadata_key or objects_changed:
+            metadata = self._view_metadata(actor)
+        else:
+            metadata = parts["metadata"]
+        result = copy.deepcopy(metadata)
+        versions = None
+        versions_key = (index_key, metadata["head"], metadata_key)
         bare = actor == "origin"
-        branch_result = self._git(actor, "symbolic-ref", "--short", "HEAD")
-        branch_name = branch_result["output"] if branch_result["code"] == 0 else None
-        upstream = None if bare else self._git(actor, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
-        result = {"bare": bare, "head": self._ref(actor, "HEAD"),
-                        "branch": branch_name, "graph": self._graph(actor),
-                        "trackingName": upstream["output"] if upstream and upstream["code"] == 0 else None,
-                        "tracking": None if bare else self._ref(actor, "@{upstream}"),
-                        "history": self._must(actor, "log", "--oneline", "--graph", "--all", "-8"),
-                        "files": {}}
         if not bare:
-            result["status"] = self._must(actor, "status", "--short")
-            versions = self._file_versions(actor)
+            # Internal inspection must not refresh index stat information and
+            # turn an ordinary file edit into an index-cache miss next time.
+            result["status"] = self._must(actor, "--no-optional-locks", "status", "--short")
+            if not parts or parts["versions_key"] != versions_key or objects_changed:
+                versions = self._file_versions(actor)
+            else:
+                versions = parts["versions"]
             for name in self.files:
                 result["files"][name] = {
                     "working": self._file(actor, name).read_text(encoding="utf-8"),
                     "staged": versions["staged", name],
                     "committed": versions["committed", name]}
-        self._view_cache[actor] = (self._repo_signature(actor), copy.deepcopy(result))
+        final_signature = self._repo_signature(actor)
+        if signature == final_signature:
+            self._view_parts[actor] = {"metadata_key": metadata_key, "objects": objects,
+                                       "metadata": metadata, "versions_key": versions_key,
+                                       "versions": versions}
+            self._view_cache[actor] = (final_signature, copy.deepcopy(result))
+        # If a native operation changed files during collection, don't stamp
+        # partially collected data with that new signature. Reinspect next time.
         return result
 
     def state(self):
