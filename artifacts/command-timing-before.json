@@ -1,0 +1,23 @@
+[
+  {
+    "command": "git status",
+    "totalMs": 2927.95,
+    "gitProcesses": 34,
+    "commandMs": 89.17,
+    "gitMs": 2907.05
+  },
+  {
+    "command": "git diff",
+    "totalMs": 3184.59,
+    "gitProcesses": 34,
+    "commandMs": 87.93,
+    "gitMs": 3158.28
+  },
+  {
+    "command": "git add README.md",
+    "totalMs": 3286.57,
+    "gitProcesses": 34,
+    "commandMs": 101.21,
+    "gitMs": 2834.88
+  }
+]

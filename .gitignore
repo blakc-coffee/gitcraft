@@ -1,0 +1,30 @@
+# Local Python and Node environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+node_modules/
+npm-debug.log*
+
+# Credentials and local tooling state
+.env
+.env.*
+!.env.example
+.impeccable/
+.gitcraft-labs/
+.DS_Store
+Thumbs.db
+
+# Keep only reviewed visual and timing evidence, never live repositories/browsers
+/artifacts/*
+!/artifacts/commands-page-desktop.png
+!/artifacts/commands-page-mobile.png
+!/artifacts/split-workbench-desktop.jpg
+!/artifacts/split-workbench-mobile.jpg
+!/artifacts/split-workbench-reference.png
+!/artifacts/command-timing-before.json
+!/artifacts/command-timing-after.json
+
+# Unrelated local reference document
+/company-sample-02-pctl-points.pdf
