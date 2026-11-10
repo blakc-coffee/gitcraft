@@ -1,4 +1,5 @@
 import json
+import http.client
 import tempfile
 import threading
 import unittest
@@ -33,10 +34,45 @@ class ServerTests(unittest.TestCase):
         return urlopen(request)
 
     def test_browser_assets_and_security_headers(self):
-        for path in ("/", "/app.js", "/style.css", "/lessons.mjs", "/playground.mjs"):
+        for path in ("/", "/app.js", "/style.css", "/lessons.mjs", "/playground.mjs", "/connection.mjs", "/landing.css", "/landing.mjs"):
             with urlopen(self.url + path) as response:
                 self.assertEqual(response.status, 200)
                 self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
+
+    def test_landing_assets_are_bounded_and_binary(self):
+        with urlopen(self.url + "/api/state") as response:
+            before = json.load(response)["state"]
+        for path, mime, signature in (
+            ("/assets/workspace.jpg", "image/jpeg", b"\xff\xd8"),
+            ("/assets/collaboration.jpg", "image/jpeg", b"\xff\xd8"),
+            ("/assets/commands.jpg", "image/jpeg", b"\xff\xd8"),
+            ("/assets/manrope.ttf", "font/ttf", b"\x00\x01\x00\x00"),
+        ):
+            with self.subTest(path=path), urlopen(self.url + path) as response:
+                self.assertEqual(response.headers["Content-Type"], mime)
+                self.assertTrue(response.read().startswith(signature))
+        for path in ("/assets/../server.py", "/assets/unknown.jpg"):
+            with self.subTest(path=path), self.assertRaises(HTTPError) as error:
+                urlopen(self.url + path)
+            self.assertEqual(error.exception.code, 404)
+        with urlopen(self.url + "/api/state") as response:
+            self.assertEqual(json.load(response)["state"], before)
+
+    def test_invalid_post_framing_closes_persistent_connection(self):
+        connection = http.client.HTTPConnection("127.0.0.1", self.server.server_port, timeout=5)
+        self.addCleanup(connection.close)
+        connection.request("POST", "/api/edit", body="{}", headers={"Content-Type": "text/plain"})
+        response = connection.getresponse()
+        self.assertEqual(response.status, 400)
+        self.assertEqual(response.getheader("Connection"), "close")
+        self.assertTrue(response.will_close)
+        response.read()
+        # The same client object reconnects cleanly instead of parsing leftover
+        # bytes as another request on the rejected connection.
+        connection.request("GET", "/")
+        response = connection.getresponse()
+        self.assertEqual(response.status, 200)
+        self.assertIn(b"Make Git", response.read())
 
     def test_api_save_and_command_roundtrip(self):
         with self.post("/api/edit", {"actor":"you", "file":"schedule.md", "content":"# Community day\nStart: 11:00\n"}) as response:

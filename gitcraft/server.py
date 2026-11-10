@@ -19,6 +19,8 @@ def make_server(root, port=8765, initial_lab=None):
     lock = threading.RLock()
 
     class Handler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
         def log_message(self, *args):
             pass
 
@@ -27,11 +29,17 @@ def make_server(root, port=8765, initial_lab=None):
             self.send_response(status)
             self.send_header("Content-Type", mime)
             self.send_header("Content-Length", str(len(data)))
+            if self.close_connection:
+                self.send_header("Connection", "close")
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Content-Security-Policy", policy or "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
             self.end_headers()
-            self.wfile.write(data)
+            # Bounded writes keep larger screenshots/fonts reliable on Windows
+            # loopback connections as well as ordinary small JSON responses.
+            for offset in range(0, len(data), 32768):
+                self.wfile.write(data[offset:offset + 32768])
+            self.wfile.flush()
 
         def valid_host(self):
             return self.headers.get("Host") in (f"127.0.0.1:{self.server.server_port}", f"localhost:{self.server.server_port}")
@@ -58,10 +66,19 @@ def make_server(root, port=8765, initial_lab=None):
                      "/style.css": ("style.css", "text/css"),
                      "/lessons.mjs": ("lessons.mjs", "text/javascript"),
                      "/playground.mjs": ("playground.mjs", "text/javascript")}
+            files["/connection.mjs"] = ("connection.mjs", "text/javascript")
+            files.update({
+                "/landing.css": ("landing.css", "text/css"),
+                "/landing.mjs": ("landing.mjs", "text/javascript"),
+                "/assets/manrope.ttf": ("assets/manrope.ttf", "font/ttf"),
+                "/assets/workspace.jpg": ("assets/workspace.jpg", "image/jpeg"),
+                "/assets/collaboration.jpg": ("assets/collaboration.jpg", "image/jpeg"),
+                "/assets/commands.jpg": ("assets/commands.jpg", "image/jpeg"),
+            })
             if self.path not in files:
                 return self.send(404, {"error": "Page not found."})
             name, mime = files[self.path]
-            self.send(200, (STATIC / name).read_bytes(), mime + "; charset=utf-8")
+            self.send(200, (STATIC / name).read_bytes(), mime + "; charset=utf-8" if mime.startswith("text/") else mime)
 
         def do_POST(self):
             nonlocal lab
@@ -71,10 +88,13 @@ def make_server(root, port=8765, initial_lab=None):
             try:
                 self.connection.settimeout(5)
                 length = int(self.headers.get("Content-Length", "0"))
-                if not 0 < length <= 16384 or self.headers.get_content_type() != "application/json":
+                if not 0 < length <= 16384 or self.headers.get("Transfer-Encoding"):
                     raise LabError("Expected a small JSON request.")
                 raw = self.rfile.read(length)
+                if len(raw) != length or self.headers.get_content_type() != "application/json":
+                    raise LabError("Expected a small JSON request.")
             except (ValueError, OSError):
+                self.close_connection = True
                 return self.send(400, {"error": "Expected a small JSON request."})
             origin = self.headers.get("Origin")
             allowed = (f"http://127.0.0.1:{self.server.server_port}", f"http://localhost:{self.server.server_port}")

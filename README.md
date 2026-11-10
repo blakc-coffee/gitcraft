@@ -1,14 +1,24 @@
 # GitCraft
 
-**Learn Git in a workspace where you can see what your commands change.**
+**Make Git make sense.**
 
 Edit a small bookshop website, run real Git commands, and explore separate copies of the same project. GitCraft is an interactive playground: you choose what to change, when to commit, and what to share. There are no required lessons, scores, or penalties for asking for help.
 
-![Workspace showing a file editor beside native Git output, with a staged opening-hours change ready to review.](docs/screenshots/workspace.png)
+![GitCraft landing page introducing the playground, a real workspace preview, and a short guide to getting started.](docs/screenshots/landing.png)
 
-*The editor supplies changes to investigate. The terminal is where you inspect, stage, commit, branch, and share them.*
+*Home explains the playground. Open playground takes you into the real Git workspace.*
 
 [Get started](#get-started) · [Your first commit](#make-your-first-commit) · [Collaboration](#try-collaboration) · [Help](#find-help-and-recover-from-mistakes) · [Limits](#current-limits)
+
+## What you can do
+
+- **Explore a real Git workspace:** edit the bookshop files, inspect diffs, stage chosen content, and create commits.
+- **See the different versions:** compare your working file, staging area, and last commit without changing them.
+- **Understand collaboration:** switch between Your workspace, Sam's independent copy, and Shared to explore push, fetch, merge, and conflicts.
+- **Get help without handing over control:** command examples and branch/sharing helpers fill the terminal; you still execute the command.
+- **Recover and keep exploring:** use one-step playground Undo, reconnect after an uncertain response, and inspect the actual repository state.
+
+This version runs locally. **Try a first change** is an optional goal inside Help; it is not an automatic guided tour. The command field runs a supported subset of Git, not a Windows Terminal or PowerShell session.
 
 ## Get started
 
@@ -22,7 +32,15 @@ cd gitcraft
 python -S -m gitcraft.server
 ```
 
-Open **[http://127.0.0.1:8765/](http://127.0.0.1:8765/)** in your browser. If that port is occupied, use `python -S -m gitcraft.server --port 8766` and open the address printed by the server. On Windows, `py -3` can replace `python` if that is how Python is installed.
+Open **[http://127.0.0.1:8765/](http://127.0.0.1:8765/)** in your browser, then choose **Open playground**. If that port is occupied, use `python -S -m gitcraft.server --port 8766` and open the address printed by the server. On Windows, `py -3` can replace `python` if that is how Python is installed.
+
+The landing page includes a short walkthrough, real product previews, collaboration basics, and local setup guidance. Its preview controls show captured examples; they never run Git commands.
+
+- **Home:** `/#/home` (also the default at `/`).
+- **Workspace:** `/#/workspace`.
+- **Commands:** `/#/commands`, with direct links such as `/#/commands/add`.
+
+Choose the **GitCraft** brand to return Home. Moving between Home, Workspace, and Commands keeps your current browser drafts, terminal transcript, and selected workspace. Visiting Home alone makes no Git API requests; workspace initialization starts when you enter Workspace or Commands.
 
 GitCraft creates **Little Leaf Books**, a fictional bookshop project, for you. You do not need to create or connect a repository inside the app. Stop the server with Ctrl+C in your computer's terminal.
 
@@ -30,21 +48,28 @@ GitCraft creates **Little Leaf Books**, a fictional bookshop project, for you. Y
 
 ## Find your way around
 
+![Workspace with bookshop notes and native Git output.](gitcraft/web/assets/workspace.jpg)
+
+*Edit a file, save it, then inspect, stage and commit your chosen content in the terminal.*
+
 | Control | What it does |
 | --- | --- |
+| **Home / GitCraft brand** | Explains the playground and how to start, without resetting an active session. |
 | **Workspace** | Opens the editor and Git terminal. Type a command, then press Enter or **Run command**. |
 | **Your workspace / Sam's workspace / Shared** | Switches between two independent copies and their shared repository. Switching does not fetch, merge, or make edits. You control both people. |
 | **File tabs + Save file** | Opens `index.html`, `styles.css`, or `README.md`. Saving writes a draft to the working file; it does not stage or commit it. |
 | **Compare versions** | Shows the working file, prepared/staged content, or last committed content. These versions can differ. |
 | **Commands** | Opens searchable explanations and examples. Your editor draft and terminal transcript stay in place. |
-| **Files** | Opens file states, optional Git helpers, and **Preview saved site**. The preview uses saved files. |
+| **Files** | Opens file states and optional staging/commit helpers. Close returns focus to Files. |
 | **History** | Shows actual commits and branch references. Select a commit to inspect its files; **Text view** provides a list. |
 | **Compare** | Compares a branch across Your workspace, Sam and Shared, including remembered remote refs and uncommitted work. Reading it runs no commands. |
 | **Help** | Offers explanations and optional ideas to explore. |
-| **New branch / Exchange** | Helps compose branch, fetch, merge, and push commands. Helpers fill the prompt; you still submit it yourself. |
-| **Undo** | Restores the whole playground to before its last mutating action, including other workspaces and Shared. This is one-step recovery, not standard Git undo. |
+| **New branch / Share work** | New branch sits beside the branch selector; Share work stays in the sidebar. Both compose commands for the terminal; you still submit them yourself. |
+| **Undo action** | Restores the whole playground to before its last mutating action, including other workspaces and Shared. This is one-step recovery, not standard Git undo. |
 
-Use **Focus terminal** for more room for Git output; **Show editor** brings the editor back. In Workspace, Ctrl/Cmd+S saves the current editable draft. Up/Down in the command field recalls that workspace's commands from this browser session.
+Use **Expand terminal** for more room for Git output; **Show editor** brings the editor back. **Preview site**, beside Save file, opens the saved website and updates after saves. Choose **Close preview** to return to the editor alone. In Workspace, Ctrl/Cmd+S saves the current editable draft. Up/Down in the command field recalls that workspace's commands from this browser session.
+
+**Try a first change** opens an optional goal with explanations and inspection ideas. It does not edit files or run commands. **Compare versions** names the **Working file**, **Staged** content for the next commit, and **Last commit** separately from unsaved browser drafts.
 
 ## Make your first commit
 
@@ -54,13 +79,13 @@ This optional example adds opening hours to the sample website. Run these Git co
 2. Open **index.html**. Find `A small bookshop for curious readers.` and add ` Open Saturday, 10:00–18:00.` to that paragraph. Click **Save file**.
 3. Run `git diff`. You should see the old and new lines. Saving changed the working file; nothing is staged yet.
 4. Run `git add index.html` to stage its current saved content.
-5. Run `git diff --staged` to review exactly what the next commit will contain. The first screenshot shows this point.
+5. Run `git diff --staged` to review exactly what the next commit will contain. The workspace screenshot illustrates this distinction using a change to `README.md`.
 6. Run `git commit -m "Add Saturday opening hours"` to create a local snapshot.
 7. Run `git log --oneline` to find your commit, then `git status` to check what remains uncommitted.
 
 The distinction to explore is **save → stage → commit**. Saving writes the file, `git add` selects its current content, and `git commit` records that staged content in local history. If you edit again after staging, those later edits remain unstaged until you add them again.
 
-To see the page itself, open **Files → Preview saved site**. You can change the reading list, try different styles, or write project notes instead of following this example.
+To see the page itself, choose **Preview site** beside Save file. You can change the reading list, try different styles, or write project notes instead of following this example.
 
 ## Look up a command without losing your place
 
@@ -128,10 +153,12 @@ The explanation above the command prompt now uses the command result and the ins
 
 If a connection or server error leaves the outcome uncertain, GitCraft says the command may have run and asks you to inspect before retrying. It does not retry automatically.
 
+Requests have a 20-second waiting limit, including response reading. After an unconfirmed connection, use **Reconnect** to read the actual state before making further changes. Reconnecting never repeats a command. Browser storage failures show a warning: copy unsaved text before refreshing. Even available browser draft storage cannot restore commits or staging after the local server stops.
+
 - **Not sure what happened?** Start with `git status`. Use `git diff` for unstaged changes and `git diff --staged` for staged changes. An empty diff does not necessarily mean all versions match.
 - **Staged the wrong file?** `git restore --staged index.html` removes it from staging while keeping its working-file edits.
 - **Want to discard unstaged edits?** `git restore index.html` replaces the working file with its staged version. Review the diff first: this discards those unstaged edits.
-- **Need to recover a playground action?** Use **Undo**. It restores the whole fixture, not just the visible person's copy. Unsaved browser drafts are kept separately.
+- **Need to recover a playground action?** Use **Undo action**. It restores the whole fixture, not just the visible person's copy. Unsaved browser drafts are kept separately.
 - **Want a fresh start?** Open **Help → Reset this playground** and review the confirmation. Reset returns all three repositories to the starting state; it can be undone as the latest mutating action.
 - **Command rejected?** Read the message and look up its supported form in Commands. This is a bounded Git terminal, not a general shell for `cd`, `ls`, or package installers.
 
@@ -148,13 +175,13 @@ Beginner learning outcomes have not yet been validated in a learner study. Futur
 
 ## Development and checks
 
-The server uses Python's standard library; the frontend is plain HTML, CSS, and JavaScript modules.
+The server uses Python's standard library; the frontend is plain HTML, CSS, and JavaScript modules. The landing page uses self-hosted Manrope ([OFL license](gitcraft/web/assets/manrope-OFL.txt)), native CSS/Web Animations, and reduced-motion support. No frontend framework or animation dependency is required.
 
 | Location | Purpose |
 | --- | --- |
 | `gitcraft/engine.py` | Disposable repositories, bounded native Git commands, state inspection, and recovery. |
 | `gitcraft/server.py` | Local HTTP API and static app serving. |
-| `gitcraft/web/` | Workspace, command reference, styles, and interaction logic. |
+| `gitcraft/web/` | Landing page, workspace, command reference, styles, and interaction logic. |
 | `tests/` | Backend/native Git regression checks and JavaScript logic checks. |
 
 Run Python checks with Git available on PATH:
@@ -166,9 +193,11 @@ python -S -m unittest discover -s tests -v
 Run JavaScript checks with Node.js:
 
 ```sh
-node --test tests/test_lessons.mjs tests/test_playground.mjs tests/test_feedback.mjs
+node --test tests/test_lessons.mjs tests/test_playground.mjs tests/test_feedback.mjs tests/test_connection.mjs
 ```
 
 These screenshots were captured from the running app in a separate disposable session. The first-commit and two-way collaboration examples were executed against native Git. Browser checks used isolated headless Chromium without accessing a personal browser profile.
+
+Automated coverage includes native staging and collaboration behavior, repository recovery, command feedback, bounded network requests, static asset delivery, and HTTP framing. Browser verification covers the landing page, navigation without repository mutation, draft/transcript continuity, keyboard focus, reduced motion, and desktop/mobile layouts. These checks verify behavior; they do not establish learning effectiveness or constitute a full accessibility audit.
 
 For more detail, see [validation notes](design-qa.md), [performance implementation and measurements](docs/PERFORMANCE.md), [product context](PRODUCT.md), [design decisions](DESIGN.md), and [research, curriculum, and proposed PRD](docs/product-intelligence/README.md). Research includes historical alternatives; this README describes the current app.

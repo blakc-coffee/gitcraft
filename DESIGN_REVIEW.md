@@ -63,3 +63,26 @@ Confirmed and corrected findings:
 - style.css — default search placeholder measured 3.54:1. Theme-muted text replaces the browser default; representative placeholder and secondary-text ratios now pass 4.5:1.
 
 Validation is bounded to rendered desktop/mobile inspection plus tablet/320px reflow and interaction checks, not a complete accessibility certification. No screen-reader session, actual 200% browser zoom test or learner efficacy study was performed. Search/group navigation should still be observed with beginners before broader redesign. A reproducible failure to discover commands or transfer to real Git would justify revisiting this decision.
+
+## Control audit and placement cleanup — 8 November 2026
+
+Decision: keep contextual command helpers while reducing permanent controls. Removing all helpers would weaken beginner discovery; keeping every duplicate would retain clutter. Kept the selected terminal-led layout and theme. The council was attempted but agents hit a usage limit before complete proposals/peer review, so this is a source/browser-verified implementation decision, not a completed council outcome.
+
+Removed the one-option project selector and its frontend lesson-switch handler, duplicate footer terminal-focus control, redundant About this sample action and quickEdit function, manual preview Refresh/Back controls, and misleading clickable history-state summaries. Removed orphaned CSS for these controls. Legacy lesson APIs/fixtures remain intentional tested compatibility, not assumed dead code.
+
+Control inventory and placement:
+- Sidebar: Files, History, Compare, Help and Share work. Drawers close one another; close buttons and Escape restore focus.
+- Files: select file; explain files/staging; staged and unstaged command suggestions; commit message composer. Shared hides unusable staging helpers.
+- Editor: Save file and a single Preview site/Close preview toggle. Preview updates after saved content changes. File tabs and Working/Staged/Last commit views remain. Snapshot tabs retain the selected commit, including in Shared; empty Shared file controls are hidden.
+- Branch bar: current branch selector and New branch composer together. Selecting/composing a branch fills the terminal; no command runs.
+- Terminal: explicit Run command, optional first-change help, Expand terminal/Show editor and conditional Reconnect. Expansion has a pressed state. Helpers close covering panels before returning focus to the command field.
+- Sharing: Suggest fetch, Suggest push and Put merge in terminal. A compact helper dialog replaces the full-width sheet; only its actual opener is marked expanded.
+- History: native commit selection, text alternative and Close. State counts are information, not fake navigation to hidden controls.
+- Compare: selected branch and Close, with native-state comparison unchanged.
+- Help: optional goal, project-note handoff, three exploration entry points, topic disclosures, reference links and reset with confirmation/cancel.
+- Commands: five purpose links, all 16 command entries, search/clear, example jump, reference-only availability, put-in-terminal and external documentation links.
+- Status bar: Undo action, with an all-workspaces recovery tooltip. It remains visible on mobile.
+
+Checks: all 24 static button IDs were exercised across the control audit and recovery suite; dynamic file/stage/unstage/branch/share/merge/commit/reset controls and all 16 reference pages were checked. Native save/stage/commit, Undo and reset ran only in disposable fixtures; helper/navigation assertions compare repository views and command counts to ensure no execution. First-use/recovery checks additionally cover lost mutation replies, storage failure, failed startup, timeout, and Shared recovery. 29 JavaScript checks passed. No backend execution logic changed in this cleanup.
+
+Desktop/tablet/mobile and 390x550 short viewport checks passed with visible prompt and Undo, no page overflow and no browser errors. Reviewed screenshots of the workspace, file drawer and compact helper dialogs. Covered panes are inert while overlays obscure them; closing restores interactivity. Physical-device keyboard and full screen-reader/browser-matrix testing remain unperformed. No Brave session or existing learner repository was modified.

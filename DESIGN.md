@@ -1,6 +1,6 @@
 # GitCraft presentation: Split Workbench
 
-The user selected the Split Workbench image and requested a tools sidebar and thinner square scrollbars. The desktop app uses a narrow tools rail, file tabs and editor on the left, and a larger persistent native-Git terminal on the right. Help, History, Files and exchange tools are disclosed from the rail. Workspace and Commands are persistent top-level navigation beside the brand. Command helpers only suggest text; Enter/Run is required. On narrow screens the editor sits above the terminal and the rail stays accessible. Terminal focus can hide the editor.
+The user selected the Split Workbench image and requested a tools sidebar and thinner square scrollbars. The desktop app uses a narrow tools rail, file tabs and editor on the left, and a larger persistent native-Git terminal on the right. Help, History, Files and Share work are disclosed from the rail. Branch creation sits beside the branch selector, Preview site sits beside Save file, and Undo action sits in the status bar. Workspace and Commands are persistent top-level navigation beside the brand. Command helpers only suggest text; Enter/Run is required. On narrow screens the editor sits above the terminal and the rail stays accessible. Terminal focus can hide the editor.
 
 Selected source: artifacts/split-workbench-reference.png. Charcoal/zinc/ivory with muted amber actions follows that selected image; no final global restriction on later themes. Keel, Quarry and Signal Console remain earlier named references whose actual artwork was not supplied. No invented fidelity to those themes is claimed.
 
@@ -29,3 +29,15 @@ Keep the main workspace free of permanent comparison panels. The drawer uses the
 Keep the native transcript and existing feedback area above the prompt. A short summary states the observed result, followed by one practical hint. No additional panels, automatic fixes, command retries or service dependencies. Common learning mistakes use neutral guidance; unknown system failures use the existing error color. Browser drafts are distinguished from saved working files, and uncertain HTTP/network outcomes are not described as successful, rolled back or definitely unexecuted.
 
 Render text nodes rather than injecting output as HTML. Feedback is announced atomically in the terminal's existing status region; the duplicate footer announcement is cleared for these messages. Suggested commands, workspace switching, Undo and reset clear stale command verdicts. On mobile the feedback area has room for both summary and hint while retaining the prompt and a scrollable transcript.
+
+## First-use and connection continuity — 8 November 2026
+
+Keep first-use guidance inside Help, reached through Try a first change in the terminal heading. The goal invites a learner-authored README contribution; optional consequence and inspection explanations do not gate exploration. Shared has no editable files, so its notes action explicitly returns to Your workspace. Use canonical Working file, Staged and Last commit labels; never use Saved as a synonym for both a disk write and a commit. Browser drafts have their own label and an explicit warning when recovery storage fails.
+
+Reconnect inspects actual state after an uncertain connection, never repeats a mutation, and restores visible focus. Requests have a bounded waiting period. This is interruption recovery within the local runtime, not durable session hosting. Preserve the charcoal/amber theme, thin square scrollbars, terminal priority and optional editor. Current verification and limits are in design-qa.md.
+
+## Landing page — 8 November 2026
+
+The default root and #/home introduce GitCraft with an asymmetric charcoal/amber hero, self-hosted Manrope, genuine product previews, a short native-Git usage sequence, a single-learner collaboration explanation and local setup/FAQ. Workspace and Commands retain their original hash paths and typography. The brand returns Home. Preview buttons change captured images only; native CSS/Web Animations add short entry, scroll-entry and image-selection feedback, with content visible by default and static reduced motion. Existing theme alternatives remain future options.
+
+The saved Herding warm-charcoal reference informed surfaces and spacing; the established square amber app controls take precedence over its gradient/rounded components. Product screenshots are genuine disposable-session captures. Detailed source provenance, routing decision, council and verification are in docs/LANDING-DESIGN.md.
